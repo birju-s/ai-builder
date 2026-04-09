@@ -1,68 +1,72 @@
-# SiteForge
+# SiteForge v2
 
 ## What This Is
 
-AI-powered site generation platform that uses a multi-agent pipeline to generate Next.js websites from natural language prompts. Users describe what they want, and AI agents (Architect → Designer → Developer → Fixer) build and preview the site in real-time.
+AI-native development platform that generates, previews, iterates, and manages production-grade websites and full-stack applications through natural language. Combines patterns from v0 (self-healing pipeline), Emergent (5-agent coordination), and Lovable (plan/execute modes).
 
 ## Core Value
 
-Users can generate fully functional websites from text prompts without writing code.
+Users can generate fully functional websites from text prompts without writing code, with >95% reliability and <30s time to preview.
 
 ## Requirements
 
 ### Validated
 
-- ✓ AI site generation from prompts — existing
-- ✓ Multi-agent pipeline (Architect, Designer, Developer, Fixer) — existing
-- ✓ SSE streaming for real-time progress — existing
-- ✓ Self-healing builds with automatic error correction — existing
-- ✓ E2B sandbox for live previews — existing
-- ✓ Project persistence (JSON file storage) — existing
-- ✓ Blueprint/plan generation — existing
+(None yet — v2 is a rebuild)
 
 ### Active
 
-- [ ] Add user authentication to the platform
-- [ ] Improve error handling and user feedback
-- [ ] Add comprehensive test suite (HIGH priority)
-- [ ] Implement proper database storage
+- [ ] Implement 5-agent pipeline (Architect, Designer, Developer, Validator, PM)
+- [ ] Support Website mode (React + Next.js + Tailwind + shadcn/ui)
+- [ ] Support Full-Stack mode (adds Express/FastAPI + PostgreSQL)
+- [ ] Implement Plan Mode for blueprint review before generation
+- [ ] Implement self-healing pipeline with 3 validation layers
+- [ ] Multi-provider LLM with Claude + Gemini fallback
+- [ ] E2B sandbox for live previews
+- [ ] SSE streaming for real-time progress
+- [ ] Project versioning with rollback
+- [ ] Chat-based iteration on generated sites
+- [ ] User authentication (Clerk)
 - [ ] Rate limiting on API routes
 
 ### Out of Scope
 
 - Mobile app — web-first approach
-- Real-time collaborative editing — future phase
 - Custom template marketplace — future phase
+- Real-time collaborative editing — future phase
 
 ## Context
 
-**Existing codebase state:**
-- Next.js 16.2 + React 19 + TypeScript 5
-- Tailwind CSS v4 + shadcn/ui
-- Multi-agent LLM pipeline (Anthropic Claude primary, Gemini fallback)
-- E2B sandbox for code execution
-- File-based project storage
+**Build from specs at** `C:\Users\birju\.factory\specs\`:
+- `2026-04-08-siteforge-v2-product-requirements-document.md` — Main PRD
+- `2026-04-08-siteforge-v2-enhanced-prd-with-fr-nfr-architect-review.md` — Detailed FR/NFR with architect comments
+- `2026-04-08-siteforge-v2-parallel-execution-strategies-customer-experience-architecture.md` — Performance optimization (10 strategies)
+- `2026-04-08-siteforge-v2-contextually-aware-image-pipeline-nanobanana-kling.md` — Image generation pipeline
 
-**Technical debt identified:**
-- No test suite (HIGH priority)
-- LLM JSON parsing is fragile
-- Silent API failures
-- No authentication on API routes
-- Dual Next.js apps (code duplication)
+**Key v2 decisions from specs**:
+- Reliability > Quality > Speed priority order
+- Split Phase 1 into 1a (MVP) and 1b (full pipeline)
+- Parallel file generation with dependency DAG is mandatory
+- Use deterministic files (package.json, tailwind.config, etc.) to save LLM calls
+- Sandbox pre-warming at T=0
+- Two-phase generation: skeleton at T=15s, full quality at T=30s
 
 ## Constraints
 
-- **Tech Stack**: Next.js + React + TypeScript + Tailwind — already established
-- **AI Providers**: Anthropic Claude + Google Gemini — already integrated
-- **Sandbox**: E2B — already configured
+- **Target Speed**: <30s for websites, <90s for full-stack
+- **Target Reliability**: >95% working previews
+- **Tech Stack**: Next.js 16, React 19, Tailwind v4, shadcn/ui
+- **LLM Providers**: Claude Sonnet (primary), Gemini (fallback)
+- **Sandbox**: E2B with pre-built template
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| YOLO mode | User selected for faster execution | — Pending |
+| YOLO mode | Faster execution | — Pending |
 | Fine granularity | More focused phases (8-12) | — Pending |
-| Parallel execution | Independent plans run simultaneously | — Pending |
+| Parallel execution | Required to meet 30s target | — Pending |
+| Reliability > Quality > Speed | Broken preview is worse than slow | — Pending |
 
 ## Evolution
 
@@ -82,4 +86,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-09 after initialization*
+*Last updated: 2026-04-09 after spec review*

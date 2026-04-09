@@ -4,52 +4,55 @@
 
 AI-native development platform that generates, previews, iterates, and manages production-grade websites and full-stack applications through natural language. Combines patterns from v0 (self-healing pipeline), Emergent (5-agent coordination), and Lovable (plan/execute modes).
 
+**Current state:** v1 code exists with MVP pipeline. v2 builds on top with enhancements.
+
 ## Core Value
 
 Users can generate fully functional websites from text prompts without writing code, with >95% reliability and <30s time to preview.
 
 ## Requirements
 
-### Validated
+### Validated (from existing v1 code)
 
-(None yet — v2 is a rebuild)
+- ✓ **GEN-01**: User can enter a natural language prompt describing a website
+- ✓ **GEN-02**: AI generates React/Next.js components from the prompt
+- ✓ **GEN-03**: SSE streaming for real-time progress updates
+- ✓ **GEN-04**: Generated site preview in iframe
+- ✓ **GEN-05**: Chat-based iteration on generated sites
+- ✓ **Pipeline**: Multi-agent pipeline (Architect → Designer → Developer → Fixer → Iterator)
+- ✓ **Sandbox**: E2B sandbox for live previews
+- ✓ **Streaming**: Files stream to client as generated
+- ✓ **Project persistence**: JSON file storage with versioning
 
-### Active
+### Active (v2 enhancements needed)
 
-- [ ] Implement 5-agent pipeline (Architect, Designer, Developer, Validator, PM)
-- [ ] Support Website mode (React + Next.js + Tailwind + shadcn/ui)
-- [ ] Support Full-Stack mode (adds Express/FastAPI + PostgreSQL)
-- [ ] Implement Plan Mode for blueprint review before generation
-- [ ] Implement self-healing pipeline with 3 validation layers
-- [ ] Multi-provider LLM with Claude + Gemini fallback
-- [ ] E2B sandbox for live previews
-- [ ] SSE streaming for real-time progress
-- [ ] Project versioning with rollback
-- [ ] Chat-based iteration on generated sites
-- [ ] User authentication (Clerk)
-- [ ] Rate limiting on API routes
+- [ ] **P1B-01**: AST-based validation (imports, use client, dependencies)
+- [ ] **P1B-06**: Multi-provider fallback (Claude → Gemini) - partially done
+- [ ] **P1B-07**: Circuit breaker for provider outages
+- [ ] **P1B-08**: Ambiguous prompt detection with clarifying questions
+- [ ] **P1B-09**: Sandbox auto-destroy after 15 min inactivity
+- [ ] **P2-07**: Stream-time import corrections
+- [ ] **P2-08**: Icon hallucination correction
+- [ ] **P3-10**: User authentication via Clerk
+- [ ] **P3-12**: Rate limiting per user
+- [ ] **P4-01**: Full-stack mode (Express/FastAPI + PostgreSQL)
 
 ### Out of Scope
 
 - Mobile app — web-first approach
 - Custom template marketplace — future phase
-- Real-time collaborative editing — future phase
 
 ## Context
 
-**Build from specs at** `C:\Users\birju\.factory\specs\`:
-- `2026-04-08-siteforge-v2-product-requirements-document.md` — Main PRD
-- `2026-04-08-siteforge-v2-enhanced-prd-with-fr-nfr-architect-review.md` — Detailed FR/NFR with architect comments
-- `2026-04-08-siteforge-v2-parallel-execution-strategies-customer-experience-architecture.md` — Performance optimization (10 strategies)
-- `2026-04-08-siteforge-v2-contextually-aware-image-pipeline-nanobanana-kling.md` — Image generation pipeline
+**Existing codebase state (v1):**
+- Next.js 16.2 + React 19 + TypeScript 5
+- 5-agent pipeline implemented
+- E2B sandbox integration working
+- Project versioning exists
+- SSE streaming working
 
-**Key v2 decisions from specs**:
-- Reliability > Quality > Speed priority order
-- Split Phase 1 into 1a (MVP) and 1b (full pipeline)
-- Parallel file generation with dependency DAG is mandatory
-- Use deterministic files (package.json, tailwind.config, etc.) to save LLM calls
-- Sandbox pre-warming at T=0
-- Two-phase generation: skeleton at T=15s, full quality at T=30s
+**Build from specs at** `C:\Users\birju\.factory\specs\`:
+- PRD, Enhanced PRD with FR/NFR, Parallel Execution, Image Pipeline
 
 ## Constraints
 
@@ -57,33 +60,19 @@ Users can generate fully functional websites from text prompts without writing c
 - **Target Reliability**: >95% working previews
 - **Tech Stack**: Next.js 16, React 19, Tailwind v4, shadcn/ui
 - **LLM Providers**: Claude Sonnet (primary), Gemini (fallback)
-- **Sandbox**: E2B with pre-built template
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
 | YOLO mode | Faster execution | — Pending |
-| Fine granularity | More focused phases (8-12) | — Pending |
-| Parallel execution | Required to meet 30s target | — Pending |
+| Fine granularity | More focused phases | — Pending |
+| Parallel execution | Required for <30s target | Implemented in v1 |
 | Reliability > Quality > Speed | Broken preview is worse than slow | — Pending |
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
-**After each phase transition** (via `/gsd-transition`):
-1. Requirements invalidated? → Move to Out of Scope with reason
-2. Requirements validated? → Move to Validated with phase reference
-3. New requirements emerged? → Add to Active
-4. Decisions to log? → Add to Key Decisions
-5. "What This Is" still accurate? → Update if drifted
-
-**After each milestone** (via `/gsd-complete-milestone`):
-1. Full review of all sections
-2. Core Value check — still the right priority?
-3. Audit Out of Scope — reasons still valid?
-4. Update Context with current state
-
 ---
-*Last updated: 2026-04-09 after spec review*
+*Last updated: 2026-04-09 after correction - v1 code already has MVP*

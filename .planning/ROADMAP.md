@@ -1,219 +1,160 @@
 # Roadmap: SiteForge v2
 
 **Created:** 2026-04-09
-**Granularity:** Fine (based on PRD)
-**Mode:** YOLO
+**Based on:** v1 existing code + v2 specs from C:\Users\birju\.factory\specs\
+**Granularity:** Fine
 
 ## Phase Overview
 
-| # | Phase | Goal | Focus |
-|---|-------|------|-------|
-| 1a | MVP Pipeline | User enters prompt, gets working preview in <30s | Core generation |
-| 1b | Full Pipeline | Complete 5-agent pipeline with validation | Pipeline completion |
-| 2 | Self-Healing + Iteration | Reliable builds, chat-based iteration | Quality & iteration |
-| 3 | Plan Mode + Project Management | Blueprint review, projects dashboard, auth | UX & management |
-| 4 | Full-Stack + Deploy | Backend generation, deployment | Advanced features |
+| # | Phase | Goal | Status |
+|---|-------|------|--------|
+| 1 | MVP Enhancements | Improve v1 MVP with validation, fallback, error handling | In Progress |
+| 2 | Self-Healing + Iteration | Reliable builds, better iteration, stream correction | Pending |
+| 3 | Plan Mode + Project Management | Blueprint review, dashboard, auth | Pending |
+| 4 | Full-Stack + Deploy | Backend generation, deployment | Pending |
 
-**Total: 5 phases | 52 requirements | ~90s max for full-stack**
+**Total: 4 phases | v2 enhancements on top of existing v1**
 
 ---
 
-## Phase 1a: MVP Pipeline (Weeks 1-2)
+## Phase 1: MVP Enhancements (v1 → v2)
 
-**Goal:** Minimal Viable Pipeline. Type a prompt, see a working React site in an iframe.
+**Goal:** Enhance existing v1 MVP with validation layers, provider fallback, and robustness.
 
-**Requirements:**
-- P1A-01 to P1A-15 (all MVP requirements)
+**Already exists (v1):**
+- User prompt input → blueprint generation
+- Design system generation
+- Component file generation (Developer Agent)
+- E2B sandbox integration
+- SSE streaming
+- File streaming to client
+- Build in sandbox → preview URL
+- Hot-patch iteration
+
+**New in Phase 1:**
+- **P1B-01**: AST-based validation (imports resolve, use client, dependencies)
+- **P1B-02**: Client Component detection
+- **P1B-03**: Missing package.json dependency scanning
+- **P1B-04**: Build error retry loop (max 3x)
+- **P1B-05**: Structured logging (provider, tokens, latency)
+- **P1B-06**: Multi-provider fallback (Claude → Gemini)
+- **P1B-07**: Circuit breaker after 3 failures
+- **P1B-08**: Ambiguous prompt detection (ask clarifying questions)
+- **P1B-09**: Sandbox auto-cleanup after inactivity
 
 **Success Criteria:**
-1. User submits prompt → blueprint generated within 8s
-2. Blueprint shows page count, section types
-3. Design system shows color swatches + fonts (within 4s more)
-4. Code generates in parallel batches (not sequential)
-5. Files stream to client as generated
-6. E2B sandbox created in parallel with planning (pre-warmed)
-7. Preview appears in <30s for simple prompts
-8. Build passes, preview is interactive
-
-**Key Architecture:**
-- Developer Agent only (skip Architect + Designer for MVP -- use sample blueprint)
-- Single LLM provider (Sonnet only, no fallback yet)
-- Deterministic files: package.json, tailwind.config, globals.css generated without LLM
-- Parallel file generation with dependency DAG
-- Pre-built E2B template
+1. All imports verified via AST parsing
+2. "use client" added where needed
+3. Build errors auto-fixed, up to 3 retries
+4. Fallback to Gemini when Claude rate-limited
+5. Circuit breaker prevents cascade failures
 
 **NFR Targets:**
-- Time to first file: <8s
+- Reliability: >90% (improved from v1 baseline)
 - Time to preview: <30s
-- Reliability: >80%
-
-**UI hint:** yes
 
 ---
 
-## Phase 1b: Full Pipeline (Weeks 3-4)
+## Phase 2: Self-Healing + Iteration
 
-**Goal:** Complete 5-agent pipeline with validation layers.
+**Goal:** Full self-healing pipeline with stream correction and improved iteration.
 
 **Requirements:**
-- P1B-01 to P1B-09 (full pipeline + validation + fallback)
+- **P2-01**: Stream-time import corrections (during generation)
+- **P2-02**: Icon hallucination correction via lookup table
+- **P2-03**: Model-driven fixes (Haiku, max 3 retries)
+- **P2-04**: Chat iteration with targeted file edits
+- **P2-05**: Hot-patch without rebuild
+- **P2-06**: Version persistence
+- **P2-07**: One-click rollback
+- **P2-08**: Fix telemetry for feedback loop
 
 **Success Criteria:**
-1. Full 5-agent pipeline executes in order
-2. Architect Agent analyzes prompt, asks clarifying questions if needed
-3. Designer Agent generates complete design system
-4. Validator Agent checks each file (AST autofixers)
-5. Build errors auto-fixed, up to 3 retries
-6. Multi-provider fallback works (Claude → Gemini)
-7. Circuit breaker protects against provider outages
-8. Structured logging for observability
-
-**NFR Targets:**
-- Time to preview: <30s
-- Reliability: >90%
-- Self-healing: >70% build errors auto-fixed
+1. Stream corrections apply during generation, not after
+2. Icon names corrected automatically
+3. Iteration: "Make hero taller" → targeted edit only
+4. Preview updates in <3s after iteration
+5. Every generation creates versioned snapshot
 
 ---
 
-## Phase 2: Self-Healing + Iteration (Weeks 5-6)
-
-**Goal:** Reliable generation + chat-based iteration.
-
-**Requirements:**
-- P2-01 to P2-10
-
-**Success Criteria:**
-1. Stream correction layer fixes imports during generation
-2. Icon hallucination correction via lookup table
-3. Model-driven fixes for unresolvable errors (Haiku, max 3 retries)
-4. Chat iteration: "Make the hero section taller" → targeted file edit
-5. Hot-patch sandbox: changes reflect without rebuild
-6. Version history: every generation creates new version
-7. One-click rollback to previous version
-8. All fixes logged for telemetry feedback loop
-
-**NFR Targets:**
-- Hot-patch iteration: <3s
-- Auto-fix success rate: >70%
-- Version rollback: instant
-
----
-
-## Phase 3: Plan Mode + Project Management (Weeks 7-9)
+## Phase 3: Plan Mode + Project Management
 
 **Goal:** Blueprint review, project dashboard, user accounts.
 
 **Requirements:**
-- P3-01 to P3-12
-
-**Success Criteria:**
-1. Plan Mode: blueprint rendered as editable form
-2. User edits blueprint fields, approves
-3. Pipeline executes strictly against approved plan
-4. Project dashboard shows list, thumbnails, status
-5. Diff view between versions
-6. Code Mode: Monaco editor (lazy-loaded)
-7. Visual Mode: click preview → reveal source
-8. User auth via Clerk
-9. Rate limiting enforced per user
-
-**UI hint:** yes
+- **P3-01**: Plan Mode (blueprint without code)
+- **P3-02**: Blueprint as editable structured form
+- **P3-03**: User edits blueprint before approval
+- **P3-04**: Strict execution against approved plan
+- **P3-05**: Project dashboard with thumbnails
+- **P3-06**: Project duplication
+- **P3-07**: Diff view between versions
+- **P3-08**: Code Mode (Monaco editor)
+- **P3-09**: Visual Mode (click preview → reveal source)
+- **P3-10**: Clerk authentication
+- **P3-11**: Per-user project association
+- **P3-12**: Rate limiting
 
 ---
 
-## Phase 4: Full-Stack + Deploy (Weeks 10-12)
+## Phase 4: Full-Stack + Deploy
 
-**Goal:** Backend generation + deployment.
+**Goal:** Backend generation and deployment.
 
 **Requirements:**
-- P4-01 to P4-06
-
-**Success Criteria:**
-1. Full-Stack mode: generates Express/FastAPI + PostgreSQL backend
-2. Prisma schema generated from data models
-3. API routes generated
-4. GitHub sync with commits
-5. Deploy to Vercel/Railway
-6. Custom domain support
+- **P4-01**: Full-stack mode (Express/FastAPI + PostgreSQL)
+- **P4-02**: Prisma schema generation
+- **P4-03**: API route generation
+- **P4-04**: GitHub sync
+- **P4-05**: Deploy to Vercel/Railway
+- **P4-06**: Custom domain support
 
 **NFR Targets:**
-- Time to full-stack preview: <90s
+- Full-stack preview: <90s
 
 ---
 
 ## Requirements Traceability
 
-| Requirement | Phase |
-|-------------|-------|
-| P1A-01 | Phase 1a |
-| P1A-02 | Phase 1a |
-| P1A-03 | Phase 1a |
-| P1A-04 | Phase 1a |
-| P1A-05 | Phase 1a |
-| P1A-06 | Phase 1a |
-| P1A-07 | Phase 1a |
-| P1A-08 | Phase 1a |
-| P1A-09 | Phase 1a |
-| P1A-10 | Phase 1a |
-| P1A-11 | Phase 1a |
-| P1A-12 | Phase 1a |
-| P1A-13 | Phase 1a |
-| P1A-14 | Phase 1a |
-| P1A-15 | Phase 1a |
-| P1B-01 | Phase 1b |
-| P1B-02 | Phase 1b |
-| P1B-03 | Phase 1b |
-| P1B-04 | Phase 1b |
-| P1B-05 | Phase 1b |
-| P1B-06 | Phase 1b |
-| P1B-07 | Phase 1b |
-| P1B-08 | Phase 1b |
-| P1B-09 | Phase 1b |
-| P2-01 | Phase 2 |
-| P2-02 | Phase 2 |
-| P2-03 | Phase 2 |
-| P2-04 | Phase 2 |
-| P2-05 | Phase 2 |
-| P2-06 | Phase 2 |
-| P2-07 | Phase 2 |
-| P2-08 | Phase 2 |
-| P2-09 | Phase 2 |
-| P2-10 | Phase 2 |
-| P3-01 | Phase 3 |
-| P3-02 | Phase 3 |
-| P3-03 | Phase 3 |
-| P3-04 | Phase 3 |
-| P3-05 | Phase 3 |
-| P3-06 | Phase 3 |
-| P3-07 | Phase 3 |
-| P3-08 | Phase 3 |
-| P3-09 | Phase 3 |
-| P3-10 | Phase 3 |
-| P3-11 | Phase 3 |
-| P3-12 | Phase 3 |
-| P4-01 | Phase 4 |
-| P4-02 | Phase 4 |
-| P4-03 | Phase 4 |
-| P4-04 | Phase 4 |
-| P4-05 | Phase 4 |
-| P4-06 | Phase 4 |
-
-**Coverage:** 52/52 requirements mapped ✓
+| ID | Description | Phase | Status |
+|----|-------------|-------|--------|
+| P1B-01 | AST-based validation | 1 | Enhancement |
+| P1B-02 | Client Component detection | 1 | Enhancement |
+| P1B-03 | Missing deps scanning | 1 | Enhancement |
+| P1B-04 | Build error retry | 1 | Enhancement |
+| P1B-05 | Structured logging | 1 | Enhancement |
+| P1B-06 | Multi-provider fallback | 1 | Partial |
+| P1B-07 | Circuit breaker | 1 | New |
+| P1B-08 | Ambiguous prompt handling | 1 | New |
+| P1B-09 | Sandbox auto-cleanup | 1 | New |
+| P2-01 | Stream-time corrections | 2 | New |
+| P2-02 | Icon hallucination fix | 2 | New |
+| P2-03 | Model-driven fixes | 2 | New |
+| P2-04 | Chat iteration | 2 | Existing (improve) |
+| P2-05 | Hot-patch | 2 | Existing |
+| P2-06 | Version persistence | 2 | Existing |
+| P2-07 | Rollback | 2 | Existing |
+| P3-01 | Plan Mode | 3 | New |
+| P3-02 | Blueprint editor | 3 | New |
+| P3-03 | Blueprint approval | 3 | New |
+| P3-04 | Strict execution | 3 | New |
+| P3-05 | Project dashboard | 3 | New |
+| P3-06 | Project duplication | 3 | New |
+| P3-07 | Diff view | 3 | New |
+| P3-08 | Code Mode | 3 | New |
+| P3-09 | Visual Mode | 3 | New |
+| P3-10 | Clerk auth | 3 | New |
+| P3-11 | User association | 3 | New |
+| P3-12 | Rate limiting | 3 | New |
+| P4-01 | Full-stack mode | 4 | New |
+| P4-02 | Schema generation | 4 | New |
+| P4-03 | API route gen | 4 | New |
+| P4-04 | GitHub sync | 4 | New |
+| P4-05 | Deploy | 4 | New |
+| P4-06 | Custom domain | 4 | New |
 
 ---
 
-## Key NFR Targets Summary
-
-| Metric | Target | Phase |
-|--------|--------|-------|
-| Website preview time | <30s | 1a |
-| Full-stack preview time | <90s | 4 |
-| Reliability (working preview) | >90% → >95% | 1b → 2 |
-| Hot-patch iteration | <3s | 2 |
-| LLM cost per website | <$0.60 | 1b |
-| Sandbox cost per session | <$0.025 | 1a |
-
----
-
-*Roadmap created: 2026-04-09*
-*Based on specs: C:\Users\birju\.factory\specs\**
+*Roadmap updated: 2026-04-09*
+*Note: v1 code already has core MVP pipeline. v2 adds enhancements.*

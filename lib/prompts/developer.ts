@@ -153,12 +153,12 @@ MOTION:
 CONTENT:
 - Write compelling, realistic copy specific to the business. NO "Lorem ipsum". NO generic "Welcome to our website".
 - Headlines should be punchy and memorable. Subtext should tell a story.
-- For ALL images, use Pollinations generative AI URLs: https://image.pollinations.ai/prompt/{description}?width={width}&height={height}&nologo=true
+- For large photos (hero, gallery, features): use Pollinations URLs: https://image.pollinations.ai/prompt/{description}?width={width}&height={height}&nologo=true
 - The {description} in the URL MUST be a simple, URL-encoded string detailing what the image should show. DO NOT use commas, apostrophes, quotes, or special characters in the prompt. Use only alphanumeric characters and hyphens instead of spaces (e.g., use "grandmas-recipes" instead of "grandma's recipes!").
-- Examples: 
-  https://image.pollinations.ai/prompt/a-bowl-of-spicy-coconut-chutney-authentic-indian-cuisine?width=600&height=400&nologo=true
-  https://image.pollinations.ai/prompt/portrait-of-a-friendly-fitness-trainer-in-a-modern-gym?width=400&height=400&nologo=true
-- CRITICAL LOCALITY RULE: If the brand description mentions a specific locale, city, or culture (e.g., "Bangalore", "Paris", "Nigerian"), you MUST append that locale to EVERY image prompt so the people, architecture, and food authentically reflect that region! (e.g. "portrait-of-a-local-fitness-trainer-in-bangalore-india").
+- For user avatars, profile pictures, and testimonial faces: DO NOT use Pollinations. Use UI Avatars: https://ui-avatars.com/api/?name={First+Last}&background=random&color=fff&size=150
+- For abstract UI icons, use lucide-react. NEVER use <img> tags for small decorative icons.
+- For generic app UI/dashboard placeholders: use Placehold.co: https://placehold.co/600x400/1e293b/fff?text={Dashboard+Interface}
+- CRITICAL LOCALITY RULE: If the brand description mentions a specific locale, city, or culture (e.g., "Bangalore", "Paris", "Nigerian"), you MUST append that locale to EVERY Pollinations image prompt so the people, architecture, and food authentically reflect that region! (e.g. "portrait-of-a-local-fitness-trainer-in-bangalore-india").
 - No external API calls. All data is hardcoded in the component.
 
 OUTPUT: Raw TypeScript/TSX code only. No markdown, no explanations.`

@@ -481,59 +481,69 @@ export async function runPipeline(prompt: string, emit: EmitFn, preApprovedBluep
     const MAX_BUILD_ATTEMPTS = 3
     let buildSuccess = false
 
-    for (let attempt = 1; attempt <= MAX_BUILD_ATTEMPTS; attempt++) {
-      emitProgress(
-        emit,
-        attempt === 1
-          ? 'Running next build...'
-          : `Fixing errors, rebuild ${attempt}/${MAX_BUILD_ATTEMPTS}...`,
-        78 + attempt * 3
-      )
+    // SPEEDUP OPPORTUNITY: Skip full Next.js production build and self-healing loop
+    // if FAST_PREVIEW is enabled. Dev server will compile on-demand instantly.
+    const isFastPreview = process.env.FAST_PREVIEW === 'true'
 
-      const buildResult = await sandbox.runCommand('npx next build 2>&1', { timeout: 180 })
-      const buildOut = buildResult.stdout + '\n' + buildResult.stderr
+    if (isFastPreview) {
+      log.info('FAST_PREVIEW enabled, skipping production build validation')
+      emitProgress(emit, 'Fast preview enabled, skipping build validation...', 85)
+      buildSuccess = true
+    } else {
+      for (let attempt = 1; attempt <= MAX_BUILD_ATTEMPTS; attempt++) {
+        emitProgress(
+          emit,
+          attempt === 1
+            ? 'Running next build...'
+            : `Fixing errors, rebuild ${attempt}/${MAX_BUILD_ATTEMPTS}...`,
+          78 + attempt * 3
+        )
 
-      if (buildResult.exitCode === 0) {
-        log.info(`Build attempt ${attempt} succeeded`)
-      } else {
-        log.warn(`Build attempt ${attempt} failed`, {
-          exitCode: buildResult.exitCode,
-          output: buildOut.slice(-800),
-        })
-      }
+        const buildResult = await sandbox.runCommand('npx next build 2>&1', { timeout: 180 })
+        const buildOut = buildResult.stdout + '\n' + buildResult.stderr
 
-      if (buildResult.exitCode === 0) {
-        buildSuccess = true
-        break
-      }
+        if (buildResult.exitCode === 0) {
+          log.info(`Build attempt ${attempt} succeeded`)
+        } else {
+          log.warn(`Build attempt ${attempt} failed`, {
+            exitCode: buildResult.exitCode,
+            output: buildOut.slice(-800),
+          })
+        }
 
-      if (attempt < MAX_BUILD_ATTEMPTS) {
-        emitProgress(emit, `Build failed, auto-fixing (attempt ${attempt})...`, 82 + attempt * 2)
+        if (buildResult.exitCode === 0) {
+          buildSuccess = true
+          break
+        }
 
-        const fixes = await fixBuildErrors(buildOut, state.files)
-        if (fixes.length === 0) {
-          log.warn('No fixable errors found')
+        if (attempt < MAX_BUILD_ATTEMPTS) {
+          emitProgress(emit, `Build failed, auto-fixing (attempt ${attempt})...`, 82 + attempt * 2)
+
+          const fixes = await fixBuildErrors(buildOut, state.files)
+          if (fixes.length === 0) {
+            log.warn('No fixable errors found')
+            throw new Error(
+              `next build failed (exit ${buildResult.exitCode}):\n${buildOut.slice(-600)}`
+            )
+          }
+
+          for (const fix of fixes) {
+            const idx = state.files.findIndex((f) => f.path === fix.path)
+            if (idx >= 0) {
+              state.files[idx] = {
+                ...state.files[idx],
+                content: fix.content,
+                sizeBytes: new TextEncoder().encode(fix.content).length,
+              }
+            }
+            await sandbox.writeFile(fix.path, fix.content)
+            log.info('Applied fix', { file: fix.path })
+          }
+        } else {
           throw new Error(
-            `next build failed (exit ${buildResult.exitCode}):\n${buildOut.slice(-600)}`
+            `next build failed after ${MAX_BUILD_ATTEMPTS} attempts:\n${buildOut.slice(-600)}`
           )
         }
-
-        for (const fix of fixes) {
-          const idx = state.files.findIndex((f) => f.path === fix.path)
-          if (idx >= 0) {
-            state.files[idx] = {
-              ...state.files[idx],
-              content: fix.content,
-              sizeBytes: new TextEncoder().encode(fix.content).length,
-            }
-          }
-          await sandbox.writeFile(fix.path, fix.content)
-          log.info('Applied fix', { file: fix.path })
-        }
-      } else {
-        throw new Error(
-          `next build failed after ${MAX_BUILD_ATTEMPTS} attempts:\n${buildOut.slice(-600)}`
-        )
       }
     }
 

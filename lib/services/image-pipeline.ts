@@ -24,6 +24,7 @@ export interface ImageResult {
 function buildImagePrompts(blueprint: {
   name: string
   description: string
+  prompt?: string
   designSystem: {
     mood: string
     colors: { primary: string; background: string }
@@ -40,6 +41,7 @@ function buildImagePrompts(blueprint: {
   const requests: ImageRequest[] = []
   const mood = blueprint.designSystem.mood
   const locationContext = `Context: ${blueprint.description}. CRITICAL: If a specific location, city, or culture is mentioned, ensure the architecture, people, and atmosphere authentically reflect that locale.`
+  const originalPromptContext = blueprint.prompt ? ` User requested details: "${blueprint.prompt}".` : ''
 
   for (const page of blueprint.pages) {
     for (const section of page.sections) {
@@ -49,7 +51,7 @@ function buildImagePrompts(blueprint: {
             id: `${section.id}-main`,
             sectionId: section.id,
             sectionType: section.type,
-            prompt: `Professional hero image for "${blueprint.name}". ${locationContext} Mood: ${mood}. Wide cinematic shot, high quality, no text or watermarks. Related to: "${section.headline}".`,
+            prompt: `Professional hero image for "${blueprint.name}". ${locationContext}${originalPromptContext} Mood: ${mood}. Wide cinematic shot, high quality, no text or watermarks. Related to: "${section.headline}".`,
             aspect: '16:9',
             role: 'hero',
           })
@@ -203,6 +205,7 @@ export interface ImagePipelineResult {
 export async function runImagePipeline(blueprint: {
   name: string
   description: string
+  prompt?: string
   designSystem: {
     mood: string
     colors: { primary: string; background: string }

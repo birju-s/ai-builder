@@ -208,6 +208,7 @@ export async function runPipeline(prompt: string, emit: EmitFn, preApprovedBluep
     const imagePromise = runImagePipeline({
       name: state.blueprint.name,
       description: state.blueprint.description,
+      prompt: state.blueprint.prompt,
       designSystem: {
         mood: state.blueprint.designSystem.mood,
         colors: {

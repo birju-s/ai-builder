@@ -78,16 +78,21 @@ RULES:
 
 export async function runDesigner(
   businessDescription: string,
-  sections: string[]
+  sections: string[],
+  originalPrompt?: string
 ): Promise<DesignSystem> {
   const provider = getDefaultProvider()
   const timer = log.time('designer')
+  
+  const promptContext = originalPrompt 
+    ? `\n\nUSER's ORIGINAL REQUEST (Pay attention to any color, mood, or font preferences mentioned here):\n"${originalPrompt}"`
+    : ''
 
   const response = await provider.generateText({
     system: DESIGNER_SYSTEM,
     messages: [{
       role: 'user',
-      content: `Business: ${businessDescription}\n\nSections on the page: ${sections.join(', ')}\n\nDesign a complete visual system for this website. Make the layout feel premium and current, avoid repetitive boxy grids, prefer strong hero art direction plus balanced section variety, choose a typography/spacing rhythm with clear hierarchy, and favor a readable glass/frosted navbar when the hero image is visually busy.`,
+      content: `Business: ${businessDescription}${promptContext}\n\nSections on the page: ${sections.join(', ')}\n\nDesign a complete visual system for this website. Make the layout feel premium and current, avoid repetitive boxy grids, prefer strong hero art direction plus balanced section variety, choose a typography/spacing rhythm with clear hierarchy, and favor a readable glass/frosted navbar when the hero image is visually busy.`,
     }],
     maxTokens: 1024,
     temperature: 0.7,

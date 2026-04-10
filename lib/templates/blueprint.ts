@@ -330,7 +330,8 @@ export async function generateBlueprint(prompt: string): Promise<Blueprint> {
     const sectionTypes = structure.pages.flatMap(p => p.sections.map(s => s.type))
     const designSystem = await runDesigner(
       `${structure.name}: ${structure.description}`,
-      sectionTypes
+      sectionTypes,
+      prompt
     )
 
     const blueprint: Blueprint = {

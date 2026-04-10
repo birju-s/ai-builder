@@ -169,6 +169,7 @@ export function buildFilePrompt(
   blueprint: {
     name: string
     description: string
+    prompt?: string
     designSystem: {
       mood: string
       colors: Record<string, string>
@@ -210,10 +211,14 @@ export function buildFilePrompt(
   const layout = blueprint.designSystem.layout
   const rhythm = blueprint.designSystem.rhythm
   const rhythmGuidance = getRhythmGuidance(rhythm)
+  
+  const originalPromptContext = blueprint.prompt 
+    ? `\nUSER'S ORIGINAL REQUEST (Use this for context, specific wording, and business details):\n"${blueprint.prompt}"\n` 
+    : ''
 
   return `Generate: ${filePath}
 Purpose: ${fileDescription}
-
+${originalPromptContext}
 BRAND:
 Name: "${blueprint.name}"
 About: ${blueprint.description}

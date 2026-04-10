@@ -14,13 +14,15 @@ class E2BSandboxInstance implements SandboxInstance {
   }
 
   async writeFile(path: string, content: string): Promise<void> {
-    await this.sandbox.files.write(path, content)
+    const fullPath = path.startsWith('/') ? path : `/home/user/project/${path}`
+    await this.sandbox.files.write(fullPath, content)
     logger.debug('File written', { path })
   }
 
   async writeFiles(files: Array<{ path: string; content: string }>): Promise<void> {
     for (const file of files) {
-      await this.sandbox.files.write(file.path, file.content)
+      const fullPath = file.path.startsWith('/') ? file.path : `/home/user/project/${file.path}`
+      await this.sandbox.files.write(fullPath, file.content)
     }
     logger.info('Files written', { count: files.length })
   }

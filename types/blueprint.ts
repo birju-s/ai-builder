@@ -24,6 +24,9 @@ export interface SectionSpec {
 export type SectionType =
   | 'hero'
   | 'features'
+  | 'services'
+  | 'menu'
+  | 'schedule'
   | 'testimonials'
   | 'pricing'
   | 'cta'
@@ -55,6 +58,20 @@ export interface DesignSystem {
     displayFont: string
     bodyFont: string
     monoFont: string
+  }
+  layout: {
+    styleMode: 'editorial' | 'image-led' | 'luxury' | 'minimal' | 'bold'
+    heroStyle: 'full-bleed-cinematic' | 'split-editorial' | 'immersive-collage' | 'story-led'
+    sectionRhythm: 'alternating-editorial' | 'featured-plus-grid' | 'stacked-storytelling' | 'mixed-showcase'
+    cardStyle: 'balanced-soft' | 'media-forward' | 'minimal-outline' | 'elevated-premium'
+    navStyle: 'transparent-to-solid' | 'glass-floating' | 'solid-sticky'
+    motionLevel: 'none' | 'subtle' | 'premium' | 'expressive'
+  }
+  rhythm: {
+    sectionSpacing: 'airy' | 'balanced' | 'compact'
+    headingScale: 'dramatic' | 'assertive' | 'refined'
+    contentWidth: 'wide' | 'balanced' | 'narrow'
+    textDensity: 'airy' | 'balanced' | 'dense'
   }
   borderRadius: string
   mood: string

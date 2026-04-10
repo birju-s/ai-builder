@@ -1,3 +1,4 @@
+import generatedSitePackage from './generated-site-package.json'
 import type { DesignSystem } from '@/types/blueprint'
 
 const SAFE_FONTS: Record<string, string> = {
@@ -38,43 +39,16 @@ function safeFontName(fontName: string, fallback: string): string {
 }
 
 function generatePackageJson(): string {
-  return JSON.stringify(
-    {
-      name: 'generated-site',
-      version: '0.1.0',
-      private: true,
-      scripts: {
-        dev: 'next dev',
-        build: 'next build',
-        start: 'next start',
-        lint: 'next lint',
-      },
-      dependencies: {
-        react: '19.2.4',
-        'react-dom': '19.2.4',
-        next: '16.2.0',
-        'class-variance-authority': '0.7.1',
-        clsx: '2.1.1',
-        'tailwind-merge': '3.5.0',
-        'lucide-react': '0.577.0',
-      },
-      devDependencies: {
-        tailwindcss: '4.2.2',
-        '@tailwindcss/postcss': '4.2.2',
-        typescript: '5.8.3',
-        '@types/react': '^19',
-        '@types/react-dom': '^19',
-        '@types/node': '^20',
-      },
-    },
-    null,
-    2
-  ) + '\n'
+  return JSON.stringify(generatedSitePackage, null, 2) + '\n'
 }
 
 function generatePostcssConfig(): string {
   return [
-    'const config = { plugins: { "@tailwindcss/postcss": {} } };',
+    'import path from "node:path";',
+    'import { fileURLToPath } from "node:url";',
+    '',
+    'const rootDir = path.dirname(fileURLToPath(import.meta.url));',
+    'const config = { plugins: { "@tailwindcss/postcss": { base: rootDir } } };',
     'export default config;',
     '',
   ].join('\n')
@@ -110,11 +84,19 @@ function generateTsConfig(): string {
 
 function generateNextConfig(): string {
   return [
+    'import path from "node:path";',
+    'import { fileURLToPath } from "node:url";',
     'import type { NextConfig } from "next";',
     '',
+    'const rootDir = path.dirname(fileURLToPath(import.meta.url));',
+    '',
     'const nextConfig: NextConfig = {',
-    '  typescript: { ignoreBuildErrors: true },',
-    '  eslint: { ignoreDuringBuilds: true },',
+    '  turbopack: {',
+    '    root: rootDir,',
+    '    resolveAlias: {',
+    '      tailwindcss: path.join(rootDir, "node_modules", "tailwindcss"),',
+    '    },',
+    '  },',
     '};',
     '',
     'export default nextConfig;',
@@ -166,7 +148,7 @@ function generateGlobalsCss(colors: DesignSystem['colors'], borderRadius: string
     '',
     '@layer base {',
     '  body {',
-    '    @apply bg-[var(--background)] text-[var(--foreground)];',
+    '    @apply bg-background text-foreground;',
     '  }',
     '}',
     '',
@@ -204,6 +186,7 @@ function generateLayout(
     'export const metadata: Metadata = {',
     '  title: "Generated Site",',
     '  description: "Built with SiteForge",',
+    '  referrer: "no-referrer",',
     '};',
     '',
     'export default function RootLayout({',

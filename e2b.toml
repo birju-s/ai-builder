@@ -14,4 +14,4 @@ team_id = "1d66773e-0daa-4bc0-baf9-5032dc4e5db9"
 memory_mb = 4_096
 cpu_count = 2
 dockerfile = "e2b.Dockerfile"
-template_id = "6f5mwsacoiiqt0qj1bgx"
+template_id = "siteforge-generated-site:baseline"

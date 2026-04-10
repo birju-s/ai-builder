@@ -1,8 +1,15 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
+
+const rootDir = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
   turbopack: {
-    root: process.cwd(),
+    root: rootDir,
+    resolveAlias: {
+      tailwindcss: path.join(rootDir, "node_modules", "tailwindcss"),
+    },
   },
 };
 

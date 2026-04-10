@@ -179,10 +179,10 @@ function fixReactImports(content: string, fixes: CorrectionFix[]): string {
 }
 
 // Fix banned third-party imports by removing them.
-// The developer prompt says "no framer-motion, no @radix-ui, no headlessui".
+// Framer Motion is allowed; these packages are not part of the generated-site baseline.
 function fixBannedImports(content: string, fixes: CorrectionFix[]): string {
   const BANNED = [
-    'framer-motion', 'motion', '@radix-ui',
+    'motion', '@radix-ui',
     '@headlessui', 'headlessui',
     '@heroicons', 'react-icons',
     'styled-components', '@emotion',
@@ -204,19 +204,65 @@ function fixBannedImports(content: string, fixes: CorrectionFix[]): string {
   return content
 }
 
-// Fix broken single-quoted JS/TS string literals like:
-//   description: 'We're open daily'
-// which the model often emits without escaping the apostrophe.
+// Fix broken single-quoted JS/TS string literals containing unescaped
+// apostrophes.  The LLM frequently emits strings such as:
+//   text: 'Best coffee I've had anywhere in Portland'
+//   quote: 'I've been coming here and we're always impressed'
+// The unescaped apostrophe(s) inside the single-quoted string break the
+// JS parser.
+//
+// Strategy: scan line-by-line for single-quoted strings that contain a
+// contraction pattern (letter'letter, e.g. I've, we're, don't).  When
+// found, convert the outermost single-quoted string to double quotes,
+// preserving the inner apostrophes as literal characters.
 function fixBrokenSingleQuotedStrings(content: string, fixes: CorrectionFix[]): string {
   const original = content
+  const lines = content.split('\n')
 
-  content = content.replace(
-    /([:=([{,]\s*)'([^'\n\\]*?)'([A-Za-z][^'\n\\]*?)'/g,
-    (_match, prefix, before, after) => {
-      const value = `${before}'${after}`.replace(/"/g, '\\"')
-      return `${prefix}"${value}"`
+  // English contraction pattern: letter + ' + letter (I've, we're, don't, it's, etc.)
+  const contractionRe = /[A-Za-z]'[A-Za-z]/
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    // Skip import / comment lines
+    if (/^\s*(import |\/\/|\/\*|\*)/.test(line)) continue
+    // Skip lines that don't have any contraction
+    if (!contractionRe.test(line)) continue
+    // Skip lines that only use double-quoted strings (contraction is already safe)
+    if (!line.includes("'")) continue
+
+    // Collect positions of all unescaped single quotes
+    const sqPositions: number[] = []
+    for (let c = 0; c < line.length; c++) {
+      if (line[c] === "'" && (c === 0 || line[c - 1] !== '\\')) {
+        sqPositions.push(c)
+      }
     }
-  )
+    if (sqPositions.length < 3) continue
+
+    // Find the FIRST and LAST unescaped single quote — these are the
+    // intended outer delimiters of the string literal.
+    const firstIdx = sqPositions[0]
+    const lastIdx = sqPositions[sqPositions.length - 1]
+    if (firstIdx === lastIdx) continue
+
+    // Safety: ensure this looks like a string value context
+    // (preceded by : = ( [ { , or JSX attribute =, or line-start/whitespace for array elements)
+    const prefix = line.slice(0, firstIdx)
+    if (!/[:=(\[{,]\s*$/.test(prefix) && !/>\s*$/.test(prefix) && !/^\s*$/.test(prefix)) continue
+
+    const body = line.slice(firstIdx + 1, lastIdx)
+    const after = line.slice(lastIdx + 1)
+
+    // Only fix if the body actually contains a contraction
+    if (!contractionRe.test(body)) continue
+
+    // Escape any double quotes inside the body, then wrap in double quotes
+    const escapedBody = body.replace(/(?<!\\)"/g, '\\"')
+    lines[i] = `${prefix}"${escapedBody}"${after}`
+  }
+
+  content = lines.join('\n')
 
   if (content !== original) {
     fixes.push({

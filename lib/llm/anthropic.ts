@@ -9,7 +9,7 @@ export class AnthropicProvider implements LLMProvider {
   private client: Anthropic
   private model: string
 
-  constructor(model = 'claude-sonnet-4-5') {
+  constructor(model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6') {
     this.client = new Anthropic()
     this.model = model
   }

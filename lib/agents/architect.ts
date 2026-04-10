@@ -30,10 +30,14 @@ RULES:
 - READ THE USER'S PROMPT CAREFULLY. The name, description, headlines, and subtext must ALL reflect the specific business/person/topic they described.
 - Every website MUST have navbar, hero, and footer sections.
 - Choose 3-5 additional sections that make sense for THIS specific business.
-- Valid section types: hero, features, testimonials, pricing, cta, about, contact, gallery, faq, stats, team, footer, navbar
+- If the user explicitly asks for sections like menu, services, schedule, pricing, testimonials, gallery, about, or contact, include those exact section types in the plan.
+- Valid section types: hero, features, services, menu, schedule, testimonials, pricing, cta, about, contact, gallery, faq, stats, team, footer, navbar
 - Each section needs a unique id (lowercase, e.g. "hero", "features-1", "testimonials").
 - Headlines and subtext must be realistic, compelling, and specific to THIS business — NOT generic placeholder text.
 - Think about the user journey: what sections will best convert visitors for this type of business?
+- Default toward a modern premium site structure: an image-led hero, a navbar that can work as a transparent-to-solid scroll header, and a mix of section types that avoids repetitive card-grid fatigue.
+- Prefer section combinations that create visual rhythm (for example hero + split story + balanced feature grid + testimonial proof + CTA), not five similar box sections in a row.
+- CRITICAL: If you include the user's quotes or catchphrases in the output strings, you MUST use single quotes or properly escape double quotes (e.g. \"quote\"). The output MUST be valid parseable JSON without syntax errors.
 - Output ONLY valid JSON.`
 
 export interface ArchitectOutput {

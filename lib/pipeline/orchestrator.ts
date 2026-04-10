@@ -1,6 +1,7 @@
 import { createLogger } from '@/lib/logger'
 import { generateBlueprint } from '@/lib/templates/blueprint'
 import { generateDeterministicFiles } from '@/lib/templates/deterministic'
+import generatedSitePackage from '@/lib/templates/generated-site-package.json'
 import { runDeveloperAgent } from '@/lib/agents/developer'
 import { fixBuildErrors } from '@/lib/agents/fixer'
 import { validateFiles } from '@/lib/pipeline/validator'
@@ -10,8 +11,27 @@ import { createSandboxService } from '@/lib/sandbox/service'
 import { createProject } from '@/lib/store/project-store'
 import type { PipelineState, PipelineStage, SSEEvent } from '@/types/pipeline'
 import type { Blueprint } from '@/types/blueprint'
+import type { SandboxInstance } from '@/lib/sandbox/types'
 
 const log = createLogger('pipeline')
+const NPM_INSTALL_CMD = 'npm install 2>&1'
+const PREBUILT_TEMPLATE_PACKAGE_PATHS = [
+  ...new Set([
+    ...Object.keys(generatedSitePackage.dependencies),
+    ...Object.keys(generatedSitePackage.devDependencies),
+  ]),
+].map((pkg) => `node_modules/${pkg}/package.json`)
+
+const PREBUILT_TEMPLATE_DEPS_CMD = [
+  'if [ ! -d node_modules ]; then',
+  '  if [ -d /home/user/project/node_modules ]; then ln -s /home/user/project/node_modules node_modules;',
+  '  elif [ -d /home/user/node_modules ]; then ln -s /home/user/node_modules node_modules;',
+  '  else echo "Prebuilt template node_modules not found" >&2; exit 1; fi;',
+  'fi;',
+  `if ${PREBUILT_TEMPLATE_PACKAGE_PATHS.map((pkgPath) => `[ -f "${pkgPath}" ]`).join(' && ')}; then exit 0; fi;`,
+  'echo "Prebuilt template is missing baseline packages" >&2;',
+  'exit 2',
+].join(' ')
 
 type EmitFn = (event: SSEEvent) => void
 
@@ -48,6 +68,30 @@ function emitStage(emit: EmitFn, stage: PipelineStage, message: string) {
 
 function emitProgress(emit: EmitFn, message: string, percent: number) {
   emit({ type: 'progress', data: { message, percent } })
+}
+
+function usesPrebuiltTemplate(): boolean {
+  return Boolean(process.env.E2B_TEMPLATE?.trim())
+}
+
+async function runNpmInstall(
+  sandbox: SandboxInstance,
+  label: string
+): Promise<{ exitCode: number; stdout: string; stderr: string; ms: number }> {
+  const installTimer = log.time(label)
+  const result = await sandbox.runCommand(NPM_INSTALL_CMD, { timeout: 180 })
+  const ms = installTimer.end({ exitCode: result.exitCode })
+  return { ...result, ms }
+}
+
+async function preparePrebuiltTemplateDeps(
+  sandbox: SandboxInstance,
+  label: string
+): Promise<{ exitCode: number; stdout: string; stderr: string; ms: number }> {
+  const prepTimer = log.time(label)
+  const result = await sandbox.runCommand(PREBUILT_TEMPLATE_DEPS_CMD, { timeout: 30 })
+  const ms = prepTimer.end({ exitCode: result.exitCode })
+  return { ...result, ms }
 }
 
 /**
@@ -123,6 +167,7 @@ export async function runPipeline(prompt: string, emit: EmitFn, preApprovedBluep
     emitStage(emit, 'generating', 'Generating React components...')
 
     const deterministicFiles = generateDeterministicFiles(state.blueprint.designSystem)
+    const usingPrebuiltTemplate = usesPrebuiltTemplate()
     for (const f of deterministicFiles) {
       state.files.push({
         path: f.path,
@@ -142,19 +187,22 @@ export async function runPipeline(prompt: string, emit: EmitFn, preApprovedBluep
     state.sandboxId = sandbox.id
     log.info('Sandbox ready', { id: sandbox.id })
 
-    // Write deterministic files immediately + start npm install
+    // Write deterministic files immediately + start dependency preparation
     const writeTimer = log.time('sandbox-write-deterministic')
     await sandbox.writeFiles(deterministicFiles)
     writeTimer.end({ files: deterministicFiles.length })
-    emitProgress(emit, 'Config files written, installing deps', 18)
+    emitProgress(
+      emit,
+      usingPrebuiltTemplate
+        ? 'Config files written, linking prebuilt deps'
+        : 'Config files written, installing deps',
+      18
+    )
 
-    // Start npm install in background (runs WHILE AI codegen happens)
-    const installPromise = (async () => {
-      const installTimer = log.time('npm-install')
-      const result = await sandbox.runCommand('npm install 2>&1', { timeout: 180 })
-      const ms = installTimer.end({ exitCode: result.exitCode })
-      return { result, ms }
-    })()
+    // Start dependency prep in background (runs WHILE AI codegen happens)
+    const dependencyPromise = usingPrebuiltTemplate
+      ? preparePrebuiltTemplateDeps(sandbox, 'template-deps')
+      : runNpmInstall(sandbox, 'npm-install')
 
     // Fire image pipeline (non-blocking, runs during codegen + install)
     const imagePromise = runImagePipeline({
@@ -200,6 +248,14 @@ export async function runPipeline(prompt: string, emit: EmitFn, preApprovedBluep
     )
 
     state.metrics.generatingMs = genTimer.end({ aiFiles: aiFiles.length })
+
+    const generatedPageCount = aiFiles.filter((file) => /(^|\/)page\.tsx$/.test(file.path)).length
+    if (aiFiles.length === 0 || generatedPageCount === 0) {
+      throw new Error(
+        'AI generation produced no usable page files. This usually means the configured model failed before sections could be generated.'
+      )
+    }
+
     emitProgress(emit, `${aiFiles.length} components generated`, 68)
 
     // ═══════════════════════════════════════════════════════════════
@@ -261,6 +317,7 @@ export async function runPipeline(prompt: string, emit: EmitFn, preApprovedBluep
 
     // Write AI files -- if sandbox connection went stale, reconnect and rewrite everything
     const aiWriteTimer = log.time('sandbox-write-ai')
+    let sandboxRecreated = false
     try {
       await sandbox.writeFiles(
         batchValidation.files.map((f) => ({ path: f.path, content: f.content }))
@@ -269,10 +326,12 @@ export async function runPipeline(prompt: string, emit: EmitFn, preApprovedBluep
       const msg = writeErr instanceof Error ? writeErr.message : String(writeErr)
       if (msg.includes('fetch failed') || msg.includes('ECONNRESET') || msg.includes('socket hang up')) {
         log.warn('Sandbox connection stale, reconnecting...', { error: msg })
+        const previousSandboxId = sandbox.id
         sandbox = await sandboxService.connect(sandbox.id).catch(async () => {
           log.warn('Reconnect failed, creating fresh sandbox')
           return sandboxService.create()
         })
+        sandboxRecreated = sandbox.id !== previousSandboxId
         state.sandboxId = sandbox.id
         // Rewrite ALL files to the fresh/reconnected sandbox
         const allFiles = state.files.map((f) => ({ path: f.path, content: f.content }))
@@ -284,38 +343,101 @@ export async function runPipeline(prompt: string, emit: EmitFn, preApprovedBluep
     state.metrics.sandboxWriteMs = aiWriteTimer.end({ files: batchValidation.files.length })
     emitProgress(emit, 'All files written', 72)
 
-    // Await npm install (likely already done since codegen took a while)
-    let installDone = false
+    // Await dependency preparation (likely already done since codegen took a while)
+    const missingDepsPatched = batchValidation.allMissingDeps.length > 0
+    let totalInstallMs = 0
+    let dependenciesReady = false
+    let prebuiltDepsPrepared = false
+
     try {
-      const { result: installResult, ms: installMs } = await installPromise
-      state.metrics.installMs = installMs
-      if (installResult.exitCode === 0) {
-        installDone = true
+      const dependencyResult = await dependencyPromise
+      totalInstallMs += dependencyResult.ms
+      if (dependencyResult.exitCode === 0) {
+        dependenciesReady = true
+        prebuiltDepsPrepared = usingPrebuiltTemplate
       } else {
-        log.warn('Initial npm install failed', {
-          exitCode: installResult.exitCode,
-          stderr: installResult.stderr.slice(0, 500),
-        })
+        log.warn(
+          usingPrebuiltTemplate
+            ? 'Prebuilt template dependency prep failed'
+            : 'Initial npm install failed',
+          {
+            exitCode: dependencyResult.exitCode,
+            stderr: dependencyResult.stderr.slice(0, 500),
+          }
+        )
       }
-    } catch (installErr) {
-      log.warn('npm install promise rejected (sandbox may have been replaced)', {
-        error: (installErr as Error).message,
+    } catch (dependencyErr) {
+      log.warn('Dependency preparation promise rejected (sandbox may have been replaced)', {
+        error: (dependencyErr as Error).message,
       })
     }
 
-    // If install didn't succeed (stale sandbox or missing deps), run it now on the current sandbox
-    if (!installDone) {
-      log.info('Running npm install on current sandbox')
-      const installTimer = log.time('npm-install-retry')
-      const retryResult = await sandbox.runCommand('npm install 2>&1', { timeout: 180 })
-      state.metrics.installMs = installTimer.end({ exitCode: retryResult.exitCode })
-      if (retryResult.exitCode !== 0) {
-        throw new Error(
-          `npm install failed (exit ${retryResult.exitCode}): ${retryResult.stderr.slice(0, 300)}`
-        )
+    if (sandboxRecreated) {
+      dependenciesReady = false
+      prebuiltDepsPrepared = false
+    }
+
+    if (missingDepsPatched) {
+      dependenciesReady = false
+    }
+
+    if (!dependenciesReady && usingPrebuiltTemplate && !prebuiltDepsPrepared) {
+      const prepReason = sandboxRecreated
+        ? 'sandbox was recreated after dependency prep started'
+        : 'initial prebuilt dependency prep did not complete successfully'
+
+      log.info('Preparing prebuilt template deps on current sandbox', { reason: prepReason })
+
+      const prebuiltResult = await preparePrebuiltTemplateDeps(sandbox, 'template-deps-retry')
+      totalInstallMs += prebuiltResult.ms
+
+      if (prebuiltResult.exitCode === 0) {
+        prebuiltDepsPrepared = true
+        dependenciesReady = !missingDepsPatched
+      } else {
+        log.warn('Prebuilt template deps unavailable, falling back to npm install', {
+          exitCode: prebuiltResult.exitCode,
+          stderr: (prebuiltResult.stderr || prebuiltResult.stdout).slice(0, 300),
+        })
       }
     }
-    emitProgress(emit, 'Dependencies installed', 75)
+
+    if (!dependenciesReady) {
+      const reason = missingDepsPatched
+        ? 'package.json patched with missing deps'
+        : sandboxRecreated
+          ? 'sandbox was recreated after install started'
+          : 'initial install did not complete successfully'
+
+      log.info('Running npm install on current sandbox', {
+        reason,
+        usingPrebuiltTemplate,
+        missingDeps: batchValidation.allMissingDeps,
+      })
+
+      const installResult = await runNpmInstall(
+        sandbox,
+        missingDepsPatched ? 'npm-install-missing-deps' : 'npm-install-retry'
+      )
+      totalInstallMs += installResult.ms
+
+      if (installResult.exitCode !== 0) {
+        throw new Error(
+          `npm install failed (exit ${installResult.exitCode}): ${installResult.stderr.slice(0, 300)}`
+        )
+      }
+
+      dependenciesReady = true
+    }
+
+    state.metrics.installMs = totalInstallMs
+    emitProgress(
+      emit,
+      usingPrebuiltTemplate && prebuiltDepsPrepared && !missingDepsPatched
+        ? 'Dependencies ready from template'
+        : 'Dependencies installed',
+      75
+    )
 
     // Await image pipeline (should be done by now)
     const imageResult = await imagePromise

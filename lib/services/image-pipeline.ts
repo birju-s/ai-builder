@@ -39,6 +39,7 @@ function buildImagePrompts(blueprint: {
 }): ImageRequest[] {
   const requests: ImageRequest[] = []
   const mood = blueprint.designSystem.mood
+  const locationContext = `Context: ${blueprint.description}. CRITICAL: If a specific location, city, or culture is mentioned, ensure the architecture, people, and atmosphere authentically reflect that locale.`
 
   for (const page of blueprint.pages) {
     for (const section of page.sections) {
@@ -48,7 +49,7 @@ function buildImagePrompts(blueprint: {
             id: `${section.id}-main`,
             sectionId: section.id,
             sectionType: section.type,
-            prompt: `Professional hero image for "${blueprint.name}". ${blueprint.description}. Mood: ${mood}. Wide cinematic shot, high quality, no text or watermarks. Related to: "${section.headline}".`,
+            prompt: `Professional hero image for "${blueprint.name}". ${locationContext} Mood: ${mood}. Wide cinematic shot, high quality, no text or watermarks. Related to: "${section.headline}".`,
             aspect: '16:9',
             role: 'hero',
           })
@@ -58,18 +59,29 @@ function buildImagePrompts(blueprint: {
             id: `${section.id}-main`,
             sectionId: section.id,
             sectionType: section.type,
-            prompt: `Professional about/team photo for "${blueprint.name}". Warm, authentic feel. Mood: ${mood}. No text. Related to: "${section.headline}".`,
+            prompt: `Professional about/team photo for "${blueprint.name}". ${locationContext} Warm, authentic feel. Mood: ${mood}. No text. Related to: "${section.headline}".`,
             aspect: '4:3',
             role: 'about',
           })
           break
         case 'features':
+        case 'services':
           // Generate one image for the features section
           requests.push({
             id: `${section.id}-main`,
             sectionId: section.id,
             sectionType: section.type,
-            prompt: `Clean product/feature illustration for "${blueprint.name}". Modern, minimal. Mood: ${mood}. No text. Related to: "${section.headline}".`,
+            prompt: `Clean editorial image for the ${section.type} section of "${blueprint.name}". ${locationContext} Modern, premium, high quality. Mood: ${mood}. No text. Related to: "${section.headline}".`,
+            aspect: '4:3',
+            role: 'feature',
+          })
+          break
+        case 'menu':
+          requests.push({
+            id: `${section.id}-main`,
+            sectionId: section.id,
+            sectionType: section.type,
+            prompt: `Editorial food and drink photography for "${blueprint.name}". ${locationContext} Premium menu presentation, beautiful styling, natural light, high quality, no text. Related to: "${section.headline}".`,
             aspect: '4:3',
             role: 'feature',
           })
@@ -80,7 +92,7 @@ function buildImagePrompts(blueprint: {
             id: `${section.id}-main`,
             sectionId: section.id,
             sectionType: section.type,
-            prompt: `Professional headshot portrait, warm lighting, neutral background, friendly expression. High quality photo.`,
+            prompt: `Professional headshot portrait, warm lighting, neutral background, friendly expression. ${locationContext} High quality photo.`,
             aspect: '1:1',
             role: 'testimonial',
           })
@@ -89,11 +101,12 @@ function buildImagePrompts(blueprint: {
         case 'gallery':
         case 'contact':
         case 'cta':
+        case 'schedule':
           requests.push({
             id: `${section.id}-main`,
             sectionId: section.id,
             sectionType: section.type,
-            prompt: `Professional photo for a ${section.type} section of "${blueprint.name}". Mood: ${mood}. No text. "${section.headline}".`,
+            prompt: `Professional photo for a ${section.type} section of "${blueprint.name}". ${locationContext} Mood: ${mood}. No text. "${section.headline}".`,
             aspect: '16:9',
             role: 'general',
           })

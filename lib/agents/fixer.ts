@@ -1,5 +1,6 @@
 import { createLogger } from '@/lib/logger'
 import { getDefaultProvider } from '@/lib/llm/registry'
+import { applyStreamCorrections } from '@/lib/pipeline/stream-correction'
 
 const log = createLogger('agent:fixer')
 
@@ -122,7 +123,7 @@ export async function fixBuildErrors(
           role: 'user',
           content: `The file "${error.file}" has build errors:\n\n${error.errors}\n\nHere is the current file content:\n\n${originalFile.content}\n\nFix ALL the errors and output the complete corrected file.`,
         }],
-        maxTokens: 4096,
+        maxTokens: 16384,
         temperature: 0,
       })
 
@@ -133,6 +134,10 @@ export async function fixBuildErrors(
       else if (fixed.startsWith('```')) {
         fixed = fixed.replace(/^```\w*\n?/, '').replace(/\n?```$/, '')
       }
+
+      // Run stream corrections on the fixer output (catches re-introduced apostrophes)
+      const corrected = applyStreamCorrections(fixed)
+      fixed = corrected.content
 
       // Sanity check: fixed content should look like code
       if (fixed.includes('import ') || fixed.includes('export ') || fixed.includes('use client')) {

@@ -1,4 +1,5 @@
 import { createLogger } from '@/lib/logger'
+import generatedSitePackage from '@/lib/templates/generated-site-package.json'
 import { VALID_ICONS } from './lucide-icons'
 
 const log = createLogger('pipeline:ast-autofixer')
@@ -36,12 +37,8 @@ const KNOWN_INTERNAL_ALIASES: Record<string, boolean> = {
   '@/components/sections/': true,
 }
 
-// Known packages in the deterministic package.json
-const BASE_DEPS = new Set([
-  'react', 'react-dom', 'next',
-  'class-variance-authority', 'clsx', 'tailwind-merge',
-  'lucide-react',
-])
+// Known runtime packages in the generated-site package.json
+const BASE_DEPS = new Set(Object.keys(generatedSitePackage.dependencies))
 
 // Ensure "use client" directive is present when the file uses client-side features.
 function fixClientDirective(content: string, filePath: string, fixes: AutofixFix[]): string {
@@ -58,6 +55,11 @@ function fixClientDirective(content: string, filePath: string, fixes: AutofixFix
       needsClient = true
       break
     }
+  }
+
+  // Framer Motion components/hooks require a Client Component in App Router.
+  if (!needsClient && /from\s+['"]framer-motion['"]/.test(content)) {
+    needsClient = true
   }
 
   // Check for event handler props in JSX
@@ -399,6 +401,74 @@ function fixDuplicateImports(content: string, fixes: AutofixFix[]): string {
   return content
 }
 
+// Strengthen weak glass nav treatments that become unreadable on busy hero photography.
+function fixNavbarGlassReadability(content: string, filePath: string, fixes: AutofixFix[]): string {
+  if (!/NavbarSection\.tsx$/.test(filePath)) return content
+
+  const original = content
+
+  content = content.replace(
+    /bg-foreground\/\d+\s+backdrop-blur(?:-[\w]+)?\s+border\s+border-(?:primary-foreground|foreground)\/\d+/g,
+    'bg-background/55 backdrop-blur-xl border border-border/40 shadow-2xl shadow-black/10'
+  )
+
+  if (content !== original) {
+    fixes.push({
+      layer: 'B',
+      type: 'navbar-glass',
+      description: 'Strengthened weak glass navbar surface for readability over busy hero imagery',
+    })
+  }
+
+  return content
+}
+
+// Keep image-led heroes readable without crushing the photography under stacked dark overlays.
+function fixHeroOverlayReadability(content: string, filePath: string, fixes: AutofixFix[]): string {
+  if (!/HeroSection\.tsx$/.test(filePath)) return content
+
+  const original = content
+
+  content = content.replace(
+    /bg-gradient-to-b\s+from-primary\/(\d+)\s+via-primary\/(\d+)\s+to-primary\/(\d+)/g,
+    (match, from, via, to) => {
+      const nextFrom = Math.min(Number(from), 62)
+      const nextVia = Math.min(Number(via), 36)
+      const nextTo = Math.min(Number(to), 78)
+
+      if (nextFrom === Number(from) && nextVia === Number(via) && nextTo === Number(to)) {
+        return match
+      }
+
+      return `bg-gradient-to-b from-primary/${nextFrom} via-primary/${nextVia} to-primary/${nextTo}`
+    }
+  )
+
+  content = content.replace(
+    /bg-gradient-to-r\s+from-primary\/(\d+)\s+via-transparent\s+to-primary\/(\d+)/g,
+    (match, from, to) => {
+      const nextFrom = Math.min(Number(from), 38)
+      const nextTo = Math.min(Number(to), 24)
+
+      if (nextFrom === Number(from) && nextTo === Number(to)) {
+        return match
+      }
+
+      return `bg-gradient-to-r from-primary/${nextFrom} via-transparent to-primary/${nextTo}`
+    }
+  )
+
+  if (content !== original) {
+    fixes.push({
+      layer: 'B',
+      type: 'hero-overlay',
+      description: 'Reduced excessively dark hero overlay strength so photography remains visible',
+    })
+  }
+
+  return content
+}
+
 export function applyAutofixes(content: string, filePath: string): AutofixResult {
   const fixes: AutofixFix[] = []
   const missingDeps: string[] = []
@@ -410,6 +480,8 @@ export function applyAutofixes(content: string, filePath: string): AutofixResult
   content = validateIconUsage(content, fixes)
   content = fixClassNameAttr(content, fixes)
   content = fixDuplicateImports(content, fixes)
+  content = fixNavbarGlassReadability(content, filePath, fixes)
+  content = fixHeroOverlayReadability(content, filePath, fixes)
 
   if (fixes.length > 0) {
     log.info('AST autofixes applied', {

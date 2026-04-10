@@ -13,6 +13,9 @@ interface BlueprintEditorProps {
 const SECTION_TYPES: SectionType[] = [
   'hero',
   'features',
+  'services',
+  'menu',
+  'schedule',
   'testimonials',
   'pricing',
   'cta',

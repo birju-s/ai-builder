@@ -1,9 +1,30 @@
 import type { ImagePipelineResult } from './image-pipeline'
 
 // Match any image URL pattern the LLM might produce
-const IMAGE_URL_REGEX = /https?:\/\/(?:images\.unsplash\.com|source\.unsplash\.com|via\.placeholder\.com|placehold\.co|picsum\.photos)[^\s"'`)\]]+/g
+const IMAGE_URL_REGEX = /https?:\/\/(?:images\.unsplash\.com|source\.unsplash\.com|image\.pollinations\.ai|via\.placeholder\.com|placehold\.co|picsum\.photos)[^\s"'`)\]]+/g
 // Also match placeholder src values like "/placeholder.svg" or "placeholder.jpg"
 const PLACEHOLDER_SRC_REGEX = /src=["'](?:\/placeholder[^"']*|https?:\/\/placehold[^"']*|#)["']/g
+
+function scoreImageCandidate(url: string): number {
+  const queryWidth = url.match(/[?&](?:w|width)=(\d{2,5})/i)?.[1]
+  const queryHeight = url.match(/[?&](?:h|height)=(\d{2,5})/i)?.[1]
+  if (queryWidth && queryHeight) {
+    return Number(queryWidth) * Number(queryHeight)
+  }
+
+  const pathSize = url.match(/(\d{2,5})x(\d{2,5})/i)
+  if (pathSize) {
+    return Number(pathSize[1]) * Number(pathSize[2])
+  }
+
+  if (url.includes('/placeholder')) return 10
+  if (url.includes('placehold') || url.includes('picsum')) return 100
+  return 1
+}
+
+function replaceMatchAtIndex(content: string, match: string, index: number, replacement: string): string {
+  return content.slice(0, index) + replacement + content.slice(index + match.length)
+}
 
 export function injectImages(
   files: Array<{ path: string; content: string }>,
@@ -38,24 +59,39 @@ export function injectImages(
 
     let injected = false
 
-    // Strategy 1: Replace Unsplash/placeholder URLs
-    content = content.replace(IMAGE_URL_REGEX, (match) => {
-      if (!injected) {
-        injected = true
-        return imageUrl
-      }
-      return match
-    })
+    // Strategy 1: Replace the most prominent remote placeholder/image URL
+    const remoteCandidates = Array.from(content.matchAll(IMAGE_URL_REGEX))
+      .flatMap((candidate) =>
+        typeof candidate.index === 'number'
+          ? [{ match: candidate[0], index: candidate.index }]
+          : []
+      )
+      .sort((a, b) => scoreImageCandidate(b.match) - scoreImageCandidate(a.match))
+
+    if (remoteCandidates.length > 0) {
+      const bestCandidate = remoteCandidates[0]
+      content = replaceMatchAtIndex(content, bestCandidate.match, bestCandidate.index, imageUrl)
+      injected = true
+    }
 
     // Strategy 2: Replace placeholder src attributes
     if (!injected) {
-      content = content.replace(PLACEHOLDER_SRC_REGEX, (match) => {
-        if (!injected) {
-          injected = true
-          return `src="${imageUrl}"`
-        }
-        return match
-      })
+      const placeholderCandidate = Array.from(content.matchAll(PLACEHOLDER_SRC_REGEX))
+        .flatMap((candidate) =>
+          typeof candidate.index === 'number'
+            ? [{ match: candidate[0], index: candidate.index }]
+            : []
+        )[0]
+
+      if (placeholderCandidate) {
+        content = replaceMatchAtIndex(
+          content,
+          placeholderCandidate.match,
+          placeholderCandidate.index,
+          `src="${imageUrl}"`
+        )
+        injected = true
+      }
     }
 
     // Strategy 3: If there's an <img tag with no real src, inject one

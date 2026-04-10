@@ -1,6 +1,6 @@
 import { createLogger } from '@/lib/logger'
 import { getDefaultProvider } from '@/lib/llm/registry'
-import { DEVELOPER_SYSTEM_PROMPT, buildFilePrompt, buildPagePrompt } from '@/lib/prompts/developer'
+import { DEVELOPER_SYSTEM_PROMPT, buildFilePrompt } from '@/lib/prompts/developer'
 import { validateFile } from '@/lib/pipeline/validator'
 import type { Blueprint, GeneratedFile, FileManifest } from '@/types/blueprint'
 import type { FileGeneratedCallback } from '@/lib/agents/types'
@@ -16,6 +16,8 @@ function cleanCodeOutput(raw: string): string {
   } else if (content.startsWith('```')) {
     content = content.replace(/^```\w*\n?/, '').replace(/\n?```$/, '')
   }
+  // Some model outputs include stray standalone fence lines at the end or middle.
+  content = content.replace(/^\s*```[\w-]*\s*$/gm, '')
   // Strip any leading prose before actual code (import/export/"use client")
   const codeStart = content.search(/^(import |export |'use client'|"use client"|\/\/|\/\*)/m)
   if (codeStart > 0) {
@@ -24,21 +26,138 @@ function cleanCodeOutput(raw: string): string {
   return content.trim()
 }
 
+function getSectionComponentName(sectionType: string): string {
+  return sectionType.charAt(0).toUpperCase() + sectionType.slice(1) + 'Section'
+}
+
+function getSectionComponentPath(sectionType: string): string {
+  return `components/sections/${getSectionComponentName(sectionType)}.tsx`
+}
+
+function getSectionTypeForFile(filePath: string): string | null {
+  const match = filePath.match(/sections\/(\w+)Section\.tsx$/i)
+  return match ? match[1].toLowerCase() : null
+}
+
+function getBlueprintSectionByType(
+  blueprint: Blueprint,
+  sectionType: string
+): Blueprint['pages'][number]['sections'][number] | null {
+  for (const page of blueprint.pages) {
+    const match = page.sections.find((section) => section.type.toLowerCase() === sectionType)
+    if (match) return match
+  }
+  return null
+}
+
+function buildAnchorAliasMap(blueprint: Blueprint): Map<string, string> {
+  const aliasToId = new Map<string, string>()
+  const collisions = new Set<string>()
+  const sectionAliases: Record<string, string[]> = {
+    about: ['about', 'story', 'our-story'],
+    testimonials: ['testimonials', 'reviews', 'community', 'social-proof'],
+    contact: ['contact', 'visit', 'find-us', 'location', 'locations'],
+    gallery: ['gallery', 'portfolio', 'work', 'works'],
+    services: ['services', 'service', 'offerings'],
+    menu: ['menu', 'food', 'drinks'],
+    schedule: ['schedule', 'hours', 'availability'],
+    pricing: ['pricing', 'prices', 'plans'],
+    features: ['features'],
+    faq: ['faq', 'questions'],
+    team: ['team', 'staff'],
+  }
+
+  const addAlias = (alias: string, id: string) => {
+    const key = alias.trim().toLowerCase()
+    if (!key) return
+    const existing = aliasToId.get(key)
+    if (existing && existing !== id) {
+      aliasToId.delete(key)
+      collisions.add(key)
+      return
+    }
+    if (!collisions.has(key)) {
+      aliasToId.set(key, id)
+    }
+  }
+
+  for (const page of blueprint.pages) {
+    for (const section of page.sections) {
+      addAlias(section.id, section.id)
+      addAlias(section.type, section.id)
+      for (const alias of sectionAliases[section.type] ?? []) {
+        addAlias(alias, section.id)
+      }
+    }
+  }
+
+  return aliasToId
+}
+
+function enforceRootSectionId(content: string, sectionId: string): string {
+  return content.replace(/<(section)\b([^>]*)>/i, (match, tag, attrs: string) => {
+    if (/\bid\s*=/.test(attrs)) {
+      return `<${tag}${attrs.replace(/\bid\s*=\s*["'][^"']*["']/, `id="${sectionId}"`)}>`
+    }
+    return `<${tag} id="${sectionId}"${attrs}>`
+  })
+}
+
+function normalizeAnchorTargets(content: string, blueprint: Blueprint): string {
+  const aliasMap = buildAnchorAliasMap(blueprint)
+  const replaceTarget = (target: string): string => {
+    const normalized = target.trim().toLowerCase()
+    return aliasMap.get(normalized) ?? aliasMap.get(normalized.replace(/\s+/g, '-')) ?? target
+  }
+
+  const patterns = [
+    /(href\s*=\s*["'])#([^"']+)(["'])/g,
+    /((?:href|to)\s*:\s*["'])#([^"']+)(["'])/g,
+  ]
+
+  return patterns.reduce(
+    (nextContent, pattern) =>
+      nextContent.replace(pattern, (_match, prefix: string, target: string, suffix: string) => {
+        const resolved = replaceTarget(target)
+        return `${prefix}#${resolved}${suffix}`
+      }),
+    content
+  )
+}
+
+function normalizeGeneratedComponent(
+  content: string,
+  filePath: string,
+  blueprint: Blueprint
+): string {
+  const sectionType = getSectionTypeForFile(filePath)
+  let nextContent = normalizeAnchorTargets(content, blueprint)
+
+  if (!sectionType || sectionType === 'navbar' || sectionType === 'footer') {
+    return nextContent
+  }
+
+  const section = getBlueprintSectionByType(blueprint, sectionType)
+  if (!section) return nextContent
+
+  nextContent = enforceRootSectionId(nextContent, section.id)
+  return nextContent
+}
+
 function buildManifest(blueprint: Blueprint): FileManifest[] {
   const manifest: FileManifest[] = []
   const seenPaths = new Set<string>()
 
   for (const page of blueprint.pages) {
     for (const section of page.sections) {
-      const componentName = section.type.charAt(0).toUpperCase() + section.type.slice(1) + 'Section'
-      const path = `components/sections/${componentName}.tsx`
+      const path = getSectionComponentPath(section.type)
 
       // Deduplicate: if two sections share a type, only generate the component once
       if (!seenPaths.has(path)) {
         seenPaths.add(path)
         manifest.push({
           path,
-          description: `${section.type} section: "${section.headline}" — ${section.subtext}`,
+          description: `${section.type} section (id: ${section.id}): "${section.headline}" — ${section.subtext}`,
           dependencies: [],
           priority: 'ai-generated',
         })
@@ -51,10 +170,7 @@ function buildManifest(blueprint: Blueprint): FileManifest[] {
       manifest.push({
         path: pagePath,
         description: `Page at ${page.route} composing ${page.sections.length} sections`,
-        dependencies: page.sections.map((s) => {
-          const name = s.type.charAt(0).toUpperCase() + s.type.slice(1) + 'Section'
-          return `components/sections/${name}.tsx`
-        }),
+          dependencies: page.sections.map((s) => getSectionComponentPath(s.type)),
         priority: 'ai-generated',
       })
     }
@@ -87,10 +203,13 @@ async function generateFile(
             designSystem: {
               mood: blueprint.designSystem.mood,
               colors: blueprint.designSystem.colors as unknown as Record<string, string>,
+              layout: blueprint.designSystem.layout,
+              rhythm: blueprint.designSystem.rhythm,
             },
             pages: blueprint.pages.map((p) => ({
               route: p.route,
               sections: p.sections.map((s) => ({
+                id: s.id,
                 type: s.type,
                 headline: s.headline,
                 subtext: s.subtext,
@@ -101,11 +220,15 @@ async function generateFile(
         ),
       },
     ],
-    maxTokens: 4096,
+    maxTokens: 8192,
     temperature: 0.6,
   })
 
-  const rawContent = cleanCodeOutput(response.text)
+  const rawContent = normalizeGeneratedComponent(
+    cleanCodeOutput(response.text),
+    filePath,
+    blueprint
+  )
 
   // Self-healing: Layer A (stream corrections) + Layer B (AST autofixes)
   const validation = validateFile(rawContent, filePath)
@@ -130,53 +253,64 @@ async function generatePage(
   pageIndex: number,
   componentPaths: string[]
 ): Promise<GeneratedFile> {
-  const provider = getDefaultProvider()
   const page = blueprint.pages[pageIndex]
   const pagePath = page.route === '/' ? 'app/page.tsx' : `app${page.route}/page.tsx`
-  const timer = log.time(`generate ${pagePath}`)
+  const availableComponents = new Set(componentPaths)
 
-  const response = await provider.generateText({
-    system: DEVELOPER_SYSTEM_PROMPT,
-    cacheSystem: true,
-    messages: [
-      {
-        role: 'user',
-        content: buildPagePrompt(
-          {
-            name: blueprint.name,
-            description: blueprint.description,
-            designSystem: {
-              mood: blueprint.designSystem.mood,
-              colors: blueprint.designSystem.colors as unknown as Record<string, string>,
-            },
-            pages: blueprint.pages,
-          },
-          pageIndex,
-          componentPaths
-        ),
-      },
-    ],
-    maxTokens: 4096,
-    temperature: 0.6,
-  })
+  const imports: string[] = []
+  const beforeMain: string[] = []
+  const mainChildren: string[] = []
+  const afterMain: string[] = []
 
-  const rawContent = cleanCodeOutput(response.text)
+  for (const section of page.sections) {
+    const componentName = getSectionComponentName(section.type)
+    const componentPath = getSectionComponentPath(section.type)
 
-  // Self-healing: Layer A (stream corrections) + Layer B (AST autofixes)
-  const validation = validateFile(rawContent, pagePath)
+    if (!availableComponents.has(componentPath)) {
+      throw new Error(
+        `Missing generated component for page composition: ${componentPath}`
+      )
+    }
+
+    imports.push(
+      `import ${componentName} from "@/components/sections/${componentName}"`
+    )
+
+    const element = `      <${componentName} />`
+    if (section.type === 'navbar') {
+      beforeMain.push(element)
+    } else if (section.type === 'footer') {
+      afterMain.push(element)
+    } else {
+      mainChildren.push(element)
+    }
+  }
+
+  const source = [
+    ...imports,
+    '',
+    'export default function Page() {',
+    '  return (',
+    '    <>',
+    ...beforeMain,
+    '      <main className="overflow-x-clip">',
+    ...mainChildren,
+    '      </main>',
+    ...afterMain,
+    '    </>',
+    '  )',
+    '}',
+    '',
+  ].join('\n')
+
+  const validation = validateFile(source, pagePath)
   const content = validation.content
-
-  const durationMs = timer.end({
-    tokens: response.inputTokens + response.outputTokens,
-    validationFixes: validation.fixes.length,
-    validationMs: validation.durationMs,
-  })
 
   return {
     path: pagePath,
     content,
     sizeBytes: new TextEncoder().encode(content).length,
-    generationTimeMs: durationMs,
+    generationTimeMs: 0,
   }
 }
 

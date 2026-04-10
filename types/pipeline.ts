@@ -45,10 +45,15 @@ export type SSEEventType =
   | 'error'
   | 'metrics'
   | 'done'
+  | 'blueprint'
 
 export interface SSEEvent {
   type: SSEEventType
-  data: SSEStageEvent | SSEFileEvent | SSEProgressEvent | SSEPreviewEvent | SSEErrorEvent | SSEMetricsEvent | SSEDoneEvent
+  data: SSEStageEvent | SSEFileEvent | SSEProgressEvent | SSEPreviewEvent | SSEErrorEvent | SSEMetricsEvent | SSEDoneEvent | SSEBlueprintEvent
+}
+
+export interface SSEBlueprintEvent {
+  blueprint: Blueprint
 }
 
 export interface SSEStageEvent {

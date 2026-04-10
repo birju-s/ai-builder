@@ -1,7 +1,8 @@
 'use client'
 
-import { Check, Loader2, AlertCircle, FileCode2, Clock } from 'lucide-react'
+import { Check, Loader2, AlertCircle, FileCode2, Clock, LayoutTemplate, Palette } from 'lucide-react'
 import type { PipelineStage, PipelineMetrics } from '@/types/pipeline'
+import type { Blueprint } from '@/types/blueprint'
 
 interface PipelineStatusProps {
   stage: PipelineStage
@@ -10,6 +11,7 @@ interface PipelineStatusProps {
   files: Array<{ path: string }>
   error: string | null
   metrics: PipelineMetrics | null
+  blueprint?: Blueprint | null
 }
 
 const STAGES: Array<{ key: PipelineStage; label: string }> = [
@@ -51,7 +53,7 @@ function StageIcon({ status }: { status: 'done' | 'active' | 'pending' | 'error'
   }
 }
 
-export function PipelineStatus({ stage, message, percent, files, error, metrics }: PipelineStatusProps) {
+export function PipelineStatus({ stage, message, percent, files, error, metrics, blueprint }: PipelineStatusProps) {
   const currentIdx = stageIndex(stage)
   const isFailed = stage === 'failed'
 
@@ -98,6 +100,43 @@ export function PipelineStatus({ stage, message, percent, files, error, metrics 
           )
         })}
       </div>
+
+      {/* Blueprint & Design Indicator */}
+      {blueprint && (
+        <div className="my-4 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-3 shadow-sm space-y-3">
+          <div className="flex items-center gap-2">
+            <LayoutTemplate className="h-4 w-4 text-blue-500" />
+            <h4 className="text-sm font-medium text-neutral-900 dark:text-white">
+              {blueprint.name}
+            </h4>
+          </div>
+          <p className="text-xs text-neutral-500 line-clamp-2">
+            {blueprint.description}
+          </p>
+
+          <div className="pt-2 flex items-center gap-3 border-t border-neutral-100 dark:border-neutral-800">
+            <Palette className="h-3.5 w-3.5 text-neutral-400" />
+            <div className="flex items-center gap-1.5">
+              {[
+                blueprint.designSystem.colors.primary,
+                blueprint.designSystem.colors.secondary,
+                blueprint.designSystem.colors.accent,
+                blueprint.designSystem.colors.background,
+              ].map((hex, i) => (
+                <div
+                  key={i}
+                  className="h-4 w-4 rounded-full border border-neutral-200 shadow-sm"
+                  style={{ backgroundColor: hex }}
+                  title={hex}
+                />
+              ))}
+            </div>
+            <span className="text-[10px] uppercase tracking-wider font-medium text-neutral-500 ml-auto">
+              {blueprint.designSystem.mood.replace(/-/g, ' ')}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Generated files list */}
       {files.length > 0 && (

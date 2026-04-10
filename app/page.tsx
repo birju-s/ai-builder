@@ -82,6 +82,9 @@ export default function Home() {
                 setProgressMessage((event.data as { message: string }).message)
                 setProgressPercent((event.data as { percent: number }).percent)
                 break
+              case 'blueprint':
+                setBlueprint((event.data as { blueprint: Blueprint }).blueprint)
+                break
               case 'file':
                 setFiles((prev) => [
                   ...prev,
@@ -234,6 +237,7 @@ export default function Home() {
               files={files}
               error={error}
               metrics={metrics}
+              blueprint={blueprint}
             />
           )}
 

@@ -167,6 +167,8 @@ export async function runPipeline(prompt: string, emit: EmitFn, preApprovedBluep
       })
     }
 
+    emit({ type: 'blueprint', data: { blueprint: state.blueprint } })
+
     // ═══════════════════════════════════════════════════════════════
     // PHASE 2: Deterministic files + sandbox write + npm install
     //          OVERLAPPED with AI codegen + image pipeline

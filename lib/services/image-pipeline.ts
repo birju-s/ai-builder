@@ -68,39 +68,23 @@ function buildImagePrompts(blueprint: {
           break
         case 'features':
         case 'services':
-          // Generate one image for the features section
-          requests.push({
-            id: `${section.id}-main`,
-            sectionId: section.id,
-            sectionType: section.type,
-            prompt: `Clean editorial image for the ${section.type} section of "${blueprint.name}". ${locationContext} Modern, premium, high quality. Mood: ${mood}. No text. Related to: "${section.headline}".`,
-            aspect: '4:3',
-            role: 'feature',
-          })
-          break
-        case 'menu':
-          requests.push({
-            id: `${section.id}-main`,
-            sectionId: section.id,
-            sectionType: section.type,
-            prompt: `Editorial food and drink photography for "${blueprint.name}". ${locationContext} Premium menu presentation, beautiful styling, natural light, high quality, no text. Related to: "${section.headline}".`,
-            aspect: '4:3',
-            role: 'feature',
-          })
-          break
-        case 'testimonials':
-        case 'team':
-          requests.push({
-            id: `${section.id}-main`,
-            sectionId: section.id,
-            sectionType: section.type,
-            prompt: `Professional headshot portrait, warm lighting, neutral background, friendly expression. ${locationContext} High quality photo.`,
-            aspect: '1:1',
-            role: 'testimonial',
-          })
-          break
-        // gallery, contact, etc get a general image
         case 'gallery':
+        case 'menu':
+        case 'team':
+        case 'testimonials':
+          // Generate 4 images for grid sections to populate multiple cards
+          for (let i = 1; i <= 4; i++) {
+            requests.push({
+              id: `${section.id}-grid-${i}`,
+              sectionId: section.id,
+              sectionType: section.type,
+              prompt: `Editorial high quality image for the ${section.type} section of "${blueprint.name}". Context: ${blueprint.description}. Item ${i}. ${locationContext} Modern, premium, no text. Related to: "${section.headline}".`,
+              aspect: section.type === 'team' || section.type === 'testimonials' ? '1:1' : '4:3',
+              role: section.type === 'team' || section.type === 'testimonials' ? 'testimonial' : 'feature',
+            })
+          }
+          break
+        case 'about':
         case 'contact':
         case 'cta':
         case 'schedule':
@@ -203,7 +187,7 @@ async function generateImage(
 
 export interface ImagePipelineResult {
   images: ImageResult[]
-  sectionImageMap: Record<string, string> // sectionId -> publicUrl
+  sectionImageMap: Record<string, string[]> // sectionId -> publicUrls
 }
 
 export async function runImagePipeline(blueprint: {
@@ -245,10 +229,13 @@ export async function runImagePipeline(blueprint: {
   }
 
   const images = results.filter((r): r is ImageResult => r !== null)
-  const sectionImageMap: Record<string, string> = {}
+  const sectionImageMap: Record<string, string[]> = {}
   for (const img of images) {
     const sectionId = requests.find((r) => r.id === img.id)?.sectionId
-    if (sectionId) sectionImageMap[sectionId] = img.publicUrl
+    if (sectionId) {
+      if (!sectionImageMap[sectionId]) sectionImageMap[sectionId] = []
+      sectionImageMap[sectionId].push(img.publicUrl)
+    }
   }
 
   log.info('Image pipeline complete', {

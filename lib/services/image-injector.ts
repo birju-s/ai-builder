@@ -33,9 +33,9 @@ export function injectImages(
   if (imageResult.images.length === 0) return files
 
   // Build a queue of available images by section type for fallback
-  const imagesByType = new Map<string, string>()
-  for (const [sectionId, url] of Object.entries(imageResult.sectionImageMap)) {
-    imagesByType.set(sectionId.toLowerCase(), url)
+  const imagesByType = new Map<string, string[]>()
+  for (const [sectionId, urls] of Object.entries(imageResult.sectionImageMap)) {
+    imagesByType.set(sectionId.toLowerCase(), [...urls])
   }
 
   return files.map((file) => {
@@ -49,18 +49,19 @@ export function injectImages(
 
     const sectionType = sectionMatch[1].toLowerCase()
 
-    // Find the best matching image: exact sectionId match, then type match, then any
-    const imageUrl =
-      imagesByType.get(sectionType) ||
-      [...imagesByType.entries()].find(([key]) => key.includes(sectionType))?.[1] ||
-      [...imagesByType.entries()].find(([key]) => key.startsWith(sectionType))?.[1]
+    // Find the best matching image queue
+    let imageQueue = imagesByType.get(sectionType)
+    if (!imageQueue || imageQueue.length === 0) {
+      imageQueue = [...imagesByType.entries()].find(([key]) => key.includes(sectionType))?.[1]
+    }
+    if (!imageQueue || imageQueue.length === 0) {
+      imageQueue = [...imagesByType.entries()].find(([key]) => key.startsWith(sectionType))?.[1]
+    }
 
-    if (!imageUrl) return file
+    if (!imageQueue || imageQueue.length === 0) return file
 
-    let injected = false
-
-    // Strategy 1: Replace the most prominent remote placeholder/image URL
-    const remoteCandidates = Array.from(content.matchAll(IMAGE_URL_REGEX))
+    // Strategy 1: Replace remote placeholder/image URLs
+    let remoteCandidates = Array.from(content.matchAll(IMAGE_URL_REGEX))
       .flatMap((candidate) =>
         typeof candidate.index === 'number'
           ? [{ match: candidate[0], index: candidate.index }]
@@ -68,14 +69,25 @@ export function injectImages(
       )
       .sort((a, b) => scoreImageCandidate(b.match) - scoreImageCandidate(a.match))
 
-    if (remoteCandidates.length > 0) {
+    for (let i = 0; i < remoteCandidates.length && imageQueue.length > 0; i++) {
+      // Re-evaluate candidates because the string length changes with each replacement
+      remoteCandidates = Array.from(content.matchAll(IMAGE_URL_REGEX))
+        .flatMap((candidate) =>
+          typeof candidate.index === 'number'
+            ? [{ match: candidate[0], index: candidate.index }]
+            : []
+        )
+        .sort((a, b) => scoreImageCandidate(b.match) - scoreImageCandidate(a.match))
+      
+      if (remoteCandidates.length === 0) break
+
       const bestCandidate = remoteCandidates[0]
+      const imageUrl = imageQueue.shift()!
       content = replaceMatchAtIndex(content, bestCandidate.match, bestCandidate.index, imageUrl)
-      injected = true
     }
 
     // Strategy 2: Replace placeholder src attributes
-    if (!injected) {
+    while (imageQueue.length > 0) {
       const placeholderCandidate = Array.from(content.matchAll(PLACEHOLDER_SRC_REGEX))
         .flatMap((candidate) =>
           typeof candidate.index === 'number'
@@ -83,24 +95,24 @@ export function injectImages(
             : []
         )[0]
 
-      if (placeholderCandidate) {
-        content = replaceMatchAtIndex(
-          content,
-          placeholderCandidate.match,
-          placeholderCandidate.index,
-          `src="${imageUrl}"`
-        )
-        injected = true
-      }
+      if (!placeholderCandidate) break
+
+      const imageUrl = imageQueue.shift()!
+      content = replaceMatchAtIndex(
+        content,
+        placeholderCandidate.match,
+        placeholderCandidate.index,
+        `src="${imageUrl}"`
+      )
     }
 
     // Strategy 3: If there's an <img tag with no real src, inject one
-    if (!injected) {
+    while (imageQueue.length > 0) {
       const imgWithoutSrc = /<img(?=[^>]*\/>)(?![^>]*src=)/
-      if (imgWithoutSrc.test(content)) {
-        content = content.replace(imgWithoutSrc, `<img src="${imageUrl}" `)
-        injected = true
-      }
+      if (!imgWithoutSrc.test(content)) break
+
+      const imageUrl = imageQueue.shift()!
+      content = content.replace(imgWithoutSrc, `<img src="${imageUrl}" `)
     }
 
     return { ...file, content }

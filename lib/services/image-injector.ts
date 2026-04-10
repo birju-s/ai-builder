@@ -1,7 +1,7 @@
 import type { ImagePipelineResult } from './image-pipeline'
 
-// Match any image URL pattern the LLM might produce
-const IMAGE_URL_REGEX = /https?:\/\/(?:images\.unsplash\.com|source\.unsplash\.com|image\.pollinations\.ai|via\.placeholder\.com|placehold\.co|picsum\.photos)[^\s"'`)\]]+/g
+// Match any image URL pattern the LLM might produce (allow spaces inside URLs like src="url with spaces")
+const IMAGE_URL_REGEX = /https?:\/\/(?:images\.unsplash\.com|source\.unsplash\.com|image\.pollinations\.ai|via\.placeholder\.com|placehold\.co|picsum\.photos)[^"'`)\]]+/g
 // Also match placeholder src values like "/placeholder.svg" or "placeholder.jpg"
 const PLACEHOLDER_SRC_REGEX = /src=["'](?:\/placeholder[^"']*|https?:\/\/placehold[^"']*|#)["']/g
 

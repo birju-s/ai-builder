@@ -42,7 +42,7 @@ class E2BSandboxInstance implements SandboxInstance {
   async runCommand(cmd: string, opts?: { timeout?: number }): Promise<CommandResult> {
     const timeoutMs = (opts?.timeout ?? 120) * 1000
     try {
-      const result = await this.sandbox.commands.run(cmd, { timeoutMs })
+      const result = await this.sandbox.commands.run(cmd, { timeoutMs, cwd: '/home/user/project' })
 
       logger.info('Command executed', {
         cmd: cmd.slice(0, 120),
@@ -88,7 +88,7 @@ class E2BSandboxInstance implements SandboxInstance {
 
   async startProcess(cmd: string): Promise<void> {
     try {
-      await this.sandbox.commands.run(cmd, { background: true })
+      await this.sandbox.commands.run(cmd, { background: true, cwd: '/home/user/project' })
       logger.info('Background process started', { cmd })
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)

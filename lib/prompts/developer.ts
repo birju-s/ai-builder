@@ -155,6 +155,7 @@ CONTENT:
 - Headlines should be punchy and memorable. Subtext should tell a story.
 - For large photos (hero, gallery, features): use Pollinations URLs: https://image.pollinations.ai/prompt/{description}?width={width}&height={height}&nologo=true
 - The {description} in the URL MUST be a simple, URL-encoded string detailing what the image should show. DO NOT use commas, apostrophes, quotes, or special characters in the prompt. Use only alphanumeric characters and hyphens instead of spaces (e.g., use "grandmas-recipes" instead of "grandma's recipes!").
+- CRITICAL: Pollinations is frequently overloaded and fails on small images. For grid cards, small thumbnails, and secondary images, DO NOT use Pollinations! Use Picsum: https://picsum.photos/seed/{title}/600/400 (it generates a fast, deterministic, beautiful placeholder photo).
 - For user avatars, profile pictures, and testimonial faces: DO NOT use Pollinations. Use UI Avatars: https://ui-avatars.com/api/?name={First+Last}&background=random&color=fff&size=150
 - For abstract UI icons, use lucide-react. NEVER use <img> tags for small decorative icons.
 - For generic app UI/dashboard placeholders: use Placehold.co: https://placehold.co/600x400/1e293b/fff?text={Dashboard+Interface}

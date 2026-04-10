@@ -453,20 +453,36 @@ export async function runPipeline(prompt: string, emit: EmitFn, preApprovedBluep
       }))
 
       const changedComponents = patchedFiles.filter((f) => f.path.endsWith('.tsx'))
-      await sandbox.writeFiles(changedComponents.map((f) => ({ path: f.path, content: f.content })))
+      
+      const optimizeWrites = process.env.OPTIMIZE_FILE_WRITES === 'true'
 
-      await sandbox.runCommand('mkdir -p public/images', { timeout: 5 })
-      await Promise.all(
-        imageResult.images.map(async (img) => {
+      if (optimizeWrites) {
+        await sandbox.writeFiles(changedComponents.map((f) => ({ path: f.path, content: f.content })))
+        await sandbox.runCommand('mkdir -p public/images', { timeout: 5 })
+        await Promise.all(
+          imageResult.images.map(async (img) => {
+            const tmpPath = `${img.localPath}.b64`
+            await sandbox.writeFile(tmpPath, img.base64Data)
+            await sandbox.runCommand(`base64 -d ${tmpPath} > ${img.localPath} && rm ${tmpPath}`, {
+              timeout: 15,
+            })
+          })
+        )
+        log.info('Images injected and written concurrently', { count: imageResult.images.length })
+      } else {
+        for (const f of changedComponents) {
+          await sandbox.writeFile(f.path, f.content)
+        }
+        await sandbox.runCommand('mkdir -p public/images', { timeout: 5 })
+        for (const img of imageResult.images) {
           const tmpPath = `${img.localPath}.b64`
           await sandbox.writeFile(tmpPath, img.base64Data)
           await sandbox.runCommand(`base64 -d ${tmpPath} > ${img.localPath} && rm ${tmpPath}`, {
             timeout: 15,
           })
-        })
-      )
-
-      log.info('Images injected and written concurrently', { count: imageResult.images.length })
+        }
+        log.info('Images injected', { count: imageResult.images.length })
+      }
     }
 
     // ═══════════════════════════════════════════════════════════════

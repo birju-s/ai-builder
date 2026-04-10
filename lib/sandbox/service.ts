@@ -20,11 +20,13 @@ class E2BSandboxInstance implements SandboxInstance {
   }
 
   async writeFiles(files: Array<{ path: string; content: string }>): Promise<void> {
-    for (const file of files) {
-      const fullPath = file.path.startsWith('/') ? file.path : `/home/user/project/${file.path}`
-      await this.sandbox.files.write(fullPath, file.content)
-    }
-    logger.info('Files written', { count: files.length })
+    await Promise.all(
+      files.map(async (file) => {
+        const fullPath = file.path.startsWith('/') ? file.path : `/home/user/project/${file.path}`
+        await this.sandbox.files.write(fullPath, file.content)
+      })
+    )
+    logger.info('Files written concurrently', { count: files.length })
   }
 
   async runCommand(cmd: string, opts?: { timeout?: number }): Promise<CommandResult> {

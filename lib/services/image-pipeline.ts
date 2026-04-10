@@ -174,7 +174,11 @@ async function generateImage(
       mimeType: string
       data: string
     }
-    const ext = mimeType.includes('png') ? 'png' : 'webp'
+    
+    let ext = 'webp'
+    if (mimeType.includes('jpeg') || mimeType.includes('jpg')) ext = 'jpg'
+    else if (mimeType.includes('png')) ext = 'png'
+    
     const filename = `${request.id}.${ext}`
 
     const generationMs = timer.end({ success: true })

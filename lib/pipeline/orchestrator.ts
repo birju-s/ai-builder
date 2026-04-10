@@ -10,7 +10,7 @@ import { injectImages } from '@/lib/services/image-injector'
 import { createSandboxService } from '@/lib/sandbox/service'
 import { createProject } from '@/lib/store/project-store'
 import type { PipelineState, PipelineStage, SSEEvent } from '@/types/pipeline'
-import type { Blueprint } from '@/types/blueprint'
+import type { Blueprint, GeneratedFile } from '@/types/blueprint'
 import type { SandboxInstance } from '@/lib/sandbox/types'
 
 const log = createLogger('pipeline')
@@ -34,6 +34,8 @@ const PREBUILT_TEMPLATE_DEPS_CMD = [
 ].join(' ')
 
 type EmitFn = (event: SSEEvent) => void
+
+import { DEMO_BLUEPRINT, DEMO_FILES, DEMO_IMAGE_RESULT } from './demo-data'
 
 function createInitialState(prompt: string): PipelineState {
   return {
@@ -145,6 +147,12 @@ export async function runPipeline(prompt: string, emit: EmitFn, preApprovedBluep
         name: state.blueprint.name,
         pages: state.blueprint.pages.length,
       })
+    } else if (process.env.DEMO_MODE === 'true') {
+      state.blueprint = DEMO_BLUEPRINT
+      state.blueprint.prompt = prompt
+      state.metrics.planningMs = 100
+      await new Promise((r) => setTimeout(r, 1000))
+      emitProgress(emit, 'Demo blueprint loaded', 12)
     } else {
       const planTimer = log.time('planning')
       state.blueprint = await generateBlueprint(prompt)
@@ -205,7 +213,9 @@ export async function runPipeline(prompt: string, emit: EmitFn, preApprovedBluep
       : runNpmInstall(sandbox, 'npm-install')
 
     // Fire image pipeline (non-blocking, runs during codegen + install)
-    const imagePromise = runImagePipeline({
+    const imagePromise = process.env.DEMO_MODE === 'true' 
+      ? Promise.resolve(DEMO_IMAGE_RESULT)
+      : runImagePipeline({
       name: state.blueprint.name,
       description: state.blueprint.description,
       prompt: state.blueprint.prompt,
@@ -234,19 +244,33 @@ export async function runPipeline(prompt: string, emit: EmitFn, preApprovedBluep
     // AI codegen (parallel components → parallel pages) -- runs WHILE install happens
     const genTimer = log.time('generating')
 
-    const { files: aiFiles } = await runDeveloperAgent(
-      state.blueprint,
-      (file, index, total) => {
+    let aiFiles: GeneratedFile[] = []
+    
+    if (process.env.DEMO_MODE === 'true') {
+      aiFiles = DEMO_FILES
+      aiFiles.forEach((file, i) => {
         state.files.push(file)
         state.metrics.filesGenerated = state.files.length
-        const percent = 20 + Math.round((index / total) * 45)
-        emitProgress(emit, `Generated ${file.path}`, percent)
-        emit({
-          type: 'file',
-          data: { path: file.path, content: file.content, index, total },
-        })
-      }
-    )
+        emitProgress(emit, `Generated ${file.path}`, 20 + Math.round((i / aiFiles.length) * 45))
+        emit({ type: 'file', data: { path: file.path, content: file.content, index: i, total: aiFiles.length } })
+      })
+      await new Promise((r) => setTimeout(r, 2000))
+    } else {
+      const result = await runDeveloperAgent(
+        state.blueprint,
+        (file, index, total) => {
+          state.files.push(file)
+          state.metrics.filesGenerated = state.files.length
+          const percent = 20 + Math.round((index / total) * 45)
+          emitProgress(emit, `Generated ${file.path}`, percent)
+          emit({
+            type: 'file',
+            data: { path: file.path, content: file.content, index, total },
+          })
+        }
+      )
+      aiFiles = result.files
+    }
 
     state.metrics.generatingMs = genTimer.end({ aiFiles: aiFiles.length })
 

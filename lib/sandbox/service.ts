@@ -23,13 +23,18 @@ class E2BSandboxInstance implements SandboxInstance {
     const optimizeWrites = process.env.OPTIMIZE_FILE_WRITES === 'true'
 
     if (optimizeWrites) {
-      await Promise.all(
-        files.map(async (file) => {
-          const fullPath = file.path.startsWith('/') ? file.path : `/home/user/project/${file.path}`
-          await this.sandbox.files.write(fullPath, file.content)
-        })
-      )
-      logger.info('Files written concurrently', { count: files.length })
+      // Chunk the files to avoid overwhelming the sandbox connection with too many concurrent requests
+      const chunkSize = 5
+      for (let i = 0; i < files.length; i += chunkSize) {
+        const chunk = files.slice(i, i + chunkSize)
+        await Promise.all(
+          chunk.map(async (file) => {
+            const fullPath = file.path.startsWith('/') ? file.path : `/home/user/project/${file.path}`
+            await this.sandbox.files.write(fullPath, file.content)
+          })
+        )
+      }
+      logger.info('Files written concurrently in chunks', { count: files.length, chunkSize })
     } else {
       for (const file of files) {
         const fullPath = file.path.startsWith('/') ? file.path : `/home/user/project/${file.path}`

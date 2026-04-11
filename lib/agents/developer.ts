@@ -324,27 +324,70 @@ async function generatePage(
   }
 }
 
-export async function runDeveloperAgent(
-  blueprint: Blueprint,
-  onFileGenerated?: FileGeneratedCallback
+export async function generateSkeletonFiles(
+  blueprint: Blueprint
 ): Promise<{ files: GeneratedFile[]; manifest: FileManifest[] }> {
   const manifest = buildManifest(blueprint)
   const componentFiles = manifest.filter((m) => m.priority === 'ai-generated' && !m.path.startsWith('app/'))
-  const pageFiles = manifest.filter((m) => m.path.startsWith('app/') && m.path.endsWith('page.tsx'))
-  const totalFiles = componentFiles.length + pageFiles.length
+  const files: GeneratedFile[] = []
+
+  log.info('Generating deterministic skeletons', { count: componentFiles.length })
+
+  for (const m of componentFiles) {
+    const componentName = m.path.match(/sections\/(\w+)Section\.tsx$/i)?.[1] || 'Component'
+    const finalComponentName = componentName.charAt(0).toUpperCase() + componentName.slice(1) + 'Section'
+    const sectionType = getSectionTypeForFile(m.path) || 'section'
+    const section = getBlueprintSectionByType(blueprint, sectionType)
+    
+    // Skeleton placeholder that matches height to reduce layout shift
+    const isHero = sectionType === 'hero'
+    const minHeight = isHero ? 'min-h-[85vh]' : 'min-h-[40vh]'
+    
+    const source = [
+      `export default function ${finalComponentName}() {`,
+      `  return (`,
+      `    <section id="${section?.id || sectionType}" className="${minHeight} flex flex-col items-center justify-center p-8 bg-background text-foreground animate-pulse border-y border-border/10">`,
+      `      <div className="h-10 w-1/2 bg-muted rounded mb-6"></div>`,
+      `      <div className="h-4 w-3/4 bg-muted rounded mb-3"></div>`,
+      `      <div className="h-4 w-1/3 bg-muted rounded"></div>`,
+      `    </section>`,
+      `  )`,
+      `}`
+    ].join('\n')
+
+    files.push({
+      path: m.path,
+      content: source,
+      sizeBytes: new TextEncoder().encode(source).length,
+      generationTimeMs: 0,
+    })
+  }
+
+  // Generate pages (deterministic composition)
+  const componentPaths = files.map((f) => f.path)
+  for (let i = 0; i < blueprint.pages.length; i++) {
+    const pageFile = await generatePage(blueprint, i, componentPaths)
+    files.push(pageFile)
+  }
+
+  return { files, manifest }
+}
+
+export async function runDeveloperEnrichment(
+  blueprint: Blueprint,
+  manifest: FileManifest[],
+  onFileGenerated?: FileGeneratedCallback
+): Promise<GeneratedFile[]> {
+  const componentFiles = manifest.filter((m) => m.priority === 'ai-generated' && !m.path.startsWith('app/'))
+  const totalFiles = componentFiles.length
   const files: GeneratedFile[] = []
   let fileIndex = 0
 
-  log.info('Developer Agent starting', {
-    components: componentFiles.length,
-    pages: pageFiles.length,
-    total: totalFiles,
+  log.info('Developer Agent Enrichment starting', {
+    components: componentFiles.length
   })
 
   // Phase 0: Prompt Cache Warming (S5)
-  // By sending a tiny ping request first with the massive system prompt, Anthropic caches it.
-  // The subsequent parallel batch requests will all hit this cache, yielding ~73% cost reduction
-  // and huge latency wins for Time To First Token on the components.
   if (componentFiles.length > 0) {
     const warmTimer = log.time('cache-warming')
     try {
@@ -361,9 +404,6 @@ export async function runDeveloperAgent(
   }
 
   // Phase 1: Generate ALL section components in parallel
-  // Components have no inter-dependencies, so we can fire them all at once.
-  // We use Provider Interleaving (S4) to route grid-heavy components to Gemini and others to Anthropic.
-  // Use Promise.allSettled to prevent one failure from killing everything.
   const componentPromises = componentFiles.map((m) =>
     generateFile(m.path, m.description, blueprint, [], getProviderNameForFile(m.path))
       .catch((err) => {
@@ -382,38 +422,10 @@ export async function runDeveloperAgent(
     }
   }
 
-  log.info('Components generated', { 
-    success: files.length, 
-    failed: componentFiles.length - files.length 
-  })
-
-  // Phase 2: Generate ALL page files in parallel
-  // Pages depend on knowing which components exist, but NOT on their content.
-  // So we can generate all pages at once now that we know the component paths.
-  const componentPaths = files.map((f) => f.path)
-  
-  const pagePromises = blueprint.pages.map((_, i) =>
-    generatePage(blueprint, i, componentPaths)
-      .catch((err) => {
-        log.error('Page generation failed', { error: (err as Error).message })
-        return null
-      })
-  )
-
-  const pageResults = await Promise.allSettled(pagePromises)
-  
-  for (const result of pageResults) {
-    if (result.status === 'fulfilled' && result.value) {
-      files.push(result.value)
-      fileIndex++
-      onFileGenerated?.(result.value, fileIndex, totalFiles)
-    }
-  }
-
-  log.info('Developer Agent complete', {
+  log.info('Developer Enrichment complete', {
     filesGenerated: files.length,
     totalGenerationMs: files.reduce((sum, f) => sum + f.generationTimeMs, 0),
   })
 
-  return { files, manifest }
+  return files
 }

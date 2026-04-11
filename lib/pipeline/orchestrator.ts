@@ -2,7 +2,7 @@ import { createLogger } from '@/lib/logger'
 import { generateBlueprint } from '@/lib/templates/blueprint'
 import { generateDeterministicFiles } from '@/lib/templates/deterministic'
 import generatedSitePackage from '@/lib/templates/generated-site-package.json'
-import { runDeveloperAgent } from '@/lib/agents/developer'
+import { generateSkeletonFiles, runDeveloperEnrichment } from '@/lib/agents/developer'
 import { fixBuildErrors } from '@/lib/agents/fixer'
 import { validateFiles } from '@/lib/pipeline/validator'
 import { runImagePipeline } from '@/lib/services/image-pipeline'
@@ -247,6 +247,7 @@ export async function runPipeline(prompt: string, emit: EmitFn, preApprovedBluep
     const genTimer = log.time('generating')
 
     let aiFiles: GeneratedFile[] = []
+    let manifest: import('@/types/blueprint').FileManifest[] = []
     
     if (process.env.DEMO_MODE === 'true') {
       aiFiles = DEMO_FILES
@@ -258,20 +259,20 @@ export async function runPipeline(prompt: string, emit: EmitFn, preApprovedBluep
       })
       await new Promise((r) => setTimeout(r, 2000))
     } else {
-      const result = await runDeveloperAgent(
-        state.blueprint,
-        (file, index, total) => {
-          state.files.push(file)
-          state.metrics.filesGenerated = state.files.length
-          const percent = 20 + Math.round((index / total) * 45)
-          emitProgress(emit, `Generated ${file.path}`, percent)
-          emit({
-            type: 'file',
-            data: { path: file.path, content: file.content, index, total },
-          })
-        }
-      )
+      const result = await generateSkeletonFiles(state.blueprint)
       aiFiles = result.files
+      manifest = result.manifest
+      
+      aiFiles.forEach((file, index) => {
+        state.files.push(file)
+        state.metrics.filesGenerated = state.files.length
+        const percent = 20 + Math.round((index / aiFiles.length) * 15)
+        emitProgress(emit, `Generated skeleton ${file.path}`, percent)
+        emit({
+          type: 'file',
+          data: { path: file.path, content: file.content, index, total: aiFiles.length },
+        })
+      })
     }
 
     state.metrics.generatingMs = genTimer.end({ aiFiles: aiFiles.length })
@@ -623,6 +624,51 @@ export async function runPipeline(prompt: string, emit: EmitFn, preApprovedBluep
     // ═══════════════════════════════════════════════════════════════
     state.stage = 'preview-ready'
     state.previewUrl = sandbox.getPreviewUrl(3000)
+    
+    emitStage(emit, 'preview-ready', 'Skeleton preview ready! Enriching site...')
+    emitProgress(emit, 'Preview ready', 90)
+    emit({ type: 'preview', data: { url: state.previewUrl, sandboxId: sandbox.id, projectId: null } })
+
+    // ═══════════════════════════════════════════════════════════════
+    // PHASE 6: LLM Enrichment
+    // ═══════════════════════════════════════════════════════════════
+    if (process.env.DEMO_MODE !== 'true') {
+      emitStage(emit, 'generating', 'AI is enriching your components...')
+      
+      const enrichmentTimer = log.time('enrichment')
+      await runDeveloperEnrichment(
+        state.blueprint!,
+        manifest,
+        async (file, index, total) => {
+          try {
+            // Fix errors (AST validation)
+            const valid = validateFiles([{ path: file.path, content: file.content }])
+            let finalContent = valid.files[0].content
+            
+            // Inject images
+            const patched = injectImages([{ path: file.path, content: finalContent }], imageResult)
+            finalContent = patched[0].content
+            
+            // Hot patch in the sandbox
+            await sandbox.writeFile(file.path, finalContent)
+            
+            // Update state
+            const stateIdx = state.files.findIndex((f) => f.path === file.path)
+            if (stateIdx >= 0) {
+              state.files[stateIdx] = { ...state.files[stateIdx], content: finalContent }
+            }
+            
+            emit({ type: 'file', data: { path: file.path, content: finalContent, index, total } })
+            emitProgress(emit, `Enriched ${file.path}`, 90 + Math.round((index / total) * 9))
+          } catch (err) {
+            log.error('Failed to enrich file', { path: file.path, error: (err as Error).message })
+          }
+        }
+      )
+      
+      state.metrics.generatingMs = (state.metrics.generatingMs || 0) + enrichmentTimer.end()
+    }
+
     state.completedAt = Date.now()
     state.metrics.totalMs = state.completedAt - state.startedAt
 
@@ -643,8 +689,8 @@ export async function runPipeline(prompt: string, emit: EmitFn, preApprovedBluep
       log.warn('Failed to save project', { error: (err as Error).message })
     }
 
-    emitStage(emit, 'preview-ready', 'Your website is ready!')
-    emitProgress(emit, 'Preview ready', 100)
+    emitStage(emit, 'preview-ready', 'Your website is fully enriched and ready!')
+    emitProgress(emit, 'Finished', 100)
     emit({ type: 'preview', data: { url: state.previewUrl, sandboxId: sandbox.id, projectId } })
     emit({ type: 'metrics', data: { metrics: state.metrics } })
     emit({

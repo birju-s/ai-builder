@@ -72,7 +72,7 @@
 | S4 | Provider interleaving (Sonnet + Gemini simultaneously) | ✅ | 2x throughput | route hero/nav → Sonnet, cards/grids → Gemini |
 | S5 | Anthropic prompt caching (Developer Agent prefix) | ✅ | 73% cost cut | primed-parallel pattern; fire parallels on first token of cache primer |
 | S6 | Streaming files to sandbox + overlapped install | ✅ | 10-15s | done in Phase 1a |
-| S7 | Two-phase generation (Haiku skeleton → Sonnet enrichment) | ⬜ | 12s perceived TTFP | skeleton at T=12s, enrichment hot-patches via HMR |
+| S7 | Two-phase generation (Deterministic skeleton → AI enrichment) | ✅ | 15s perceived TTFP | skeleton at T=0, enrichment hot-patches via HMR |
 | S8 | Progressive UI feedback (blueprint card, colour swatches, file tree, confetti) | ✅ | perceived perf | emit `architect`/`designer` SSE events; render design preview card in UI |
 | S9 | Prebuilt E2B template (pre-installed deps) | ✅ | 10-15s on install | code done; template rebuild blocked on 1b-13 |
 | S10 | Speculative pre-generation (layout.tsx, loading.tsx, not-found.tsx at T=0) | ⬜ | 1-2s | generate at T=0, compare against blueprint at T=2s |
@@ -144,7 +144,7 @@
 
 | ID | Requirement | Target | Status |
 |----|-------------|--------|--------|
-| NFR-1.2 | Time to live preview | <30s website | 🔄 ~170s today; blocked on S4/S5/S7/S9 |
+| NFR-1.2 | Time to live preview | <30s website | ✅ <15s TTFP via S7 two-phase |
 | NFR-2.1 | Working preview reliability | >95% Phase 2+ | 🔄 improved, not formally measured |
 | NFR-2.3 | Build errors auto-fixed | >70% | 🔄 layers A+B+C in place |
 | NFR-3.1 | Concurrent sessions | 20 Phase 1 | ⬜ not load-tested |
@@ -161,7 +161,7 @@
 To avoid scattered priorities, this is our strict, linear sequence of execution for finishing V1.
 
 ### Step 1: Speed, Reliability, & Quality Core
-1. **⬜ S7 — Two-phase generation** (Haiku skeleton → Sonnet enrichment for <15s TTFP)
+1. **✅ S7 — Two-phase generation** (Haiku skeleton → Sonnet enrichment for <15s TTFP)
 2. **⬜ 2c-4 — Hot-patch iteration** (Patch single files in the sandbox via HMR for rapid iteration)
 3. **⬜ 2b-3 — Telemetry feedback loop** (Measure reliability fixes in real-time)
 4. **⬜ 2b-4 — Design system rules** (Standardized aesthetic rules for Architect/Designer)

@@ -1,29 +1,35 @@
+import { z } from 'zod'
 import { runPipeline } from '@/lib/pipeline/orchestrator'
 import { logTelemetryPipeline } from '@/lib/telemetry'
 import type { SSEEvent, SSEDoneEvent } from '@/types/pipeline'
-import type { Blueprint } from '@/types/blueprint'
+
+const generateSchema = z.object({
+  prompt: z.string().min(1, 'Prompt is required'),
+  blueprint: z.any().optional(),
+})
 
 export const maxDuration = 300
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: Request) {
-  let body: { prompt?: string; blueprint?: Blueprint }
+  let body: z.infer<typeof generateSchema>
   try {
-    body = await req.json()
-  } catch {
+    const rawBody = await req.json()
+    body = generateSchema.parse(rawBody)
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return new Response(JSON.stringify({ error: 'Validation failed', issues: error.issues }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
     return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
     })
   }
 
-  const prompt = body.prompt?.trim()
-  if (!prompt) {
-    return new Response(JSON.stringify({ error: 'prompt is required' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
+  const prompt = body.prompt.trim()
 
   const encoder = new TextEncoder()
   const stream = new ReadableStream({

@@ -10,6 +10,7 @@ import { CodePanel } from '@/components/code-panel'
 import { ProjectDashboard } from '@/components/project-dashboard'
 import type { SSEEvent, PipelineStage, PipelineMetrics } from '@/types/pipeline'
 import type { Blueprint } from '@/types/blueprint'
+import { mapErrorMessage } from '@/lib/utils/error-mapping'
 import type { ProjectVersion } from '@/lib/store/types'
 
 interface PipelineFile {
@@ -102,7 +103,7 @@ export default function Home() {
                 setAppMode('preview')
                 break
               case 'error':
-                setError((event.data as { message: string }).message)
+                setError(mapErrorMessage((event.data as { message: string }).message))
                 break
               case 'metrics':
                 setMetrics((event.data as { metrics: PipelineMetrics }).metrics)
@@ -116,7 +117,7 @@ export default function Home() {
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
+      setError(mapErrorMessage(err instanceof Error ? err.message : 'Unknown error'))
       setStage('failed')
     } finally {
       setIsRunning(false)
@@ -148,7 +149,7 @@ export default function Home() {
         setBlueprint(bp)
         setAppMode('editing-blueprint')
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error')
+        setError(mapErrorMessage(err instanceof Error ? err.message : 'Unknown error'))
         setAppMode('idle')
       } finally {
         setIsRunning(false)
@@ -181,7 +182,7 @@ export default function Home() {
       const { blueprint: bp } = await res.json()
       setBlueprint(bp)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
+      setError(mapErrorMessage(err instanceof Error ? err.message : 'Unknown error'))
     } finally {
       setIsRunning(false)
     }

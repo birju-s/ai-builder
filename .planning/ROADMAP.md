@@ -118,8 +118,8 @@
 | 3-9 | Visual edit mode (click preview element → source component) | ⬜ | FR-5.5 |
 | 3-10 | Architect two-pass: Haiku ambiguity score → escalate to Sonnet | ⬜ | saves ~80% Architect cost |
 | 3-11 | Rate limiting (10 gen/hr free, 50/hr pro) | ⬜ | FR arch comment |
-| 3-12 | Input validation (Zod) on every route handler | ⬜ | NFR-4.6 |
-| 3-13 | Error boundaries + human-readable error mapping in UI | ⬜ | NFR-8.3 |
+| 3-12 | Input validation (Zod) on every route handler | ✅ | NFR-4.6 |
+| 3-13 | Error boundaries + human-readable error mapping in UI | ✅ | NFR-8.3 |
 
 ---
 
@@ -173,8 +173,8 @@ To avoid scattered priorities, this is our strict, linear sequence of execution 
 
 ### Step 3: Hardening & V1 Finalization
 1. **✅ 2b-1 — Circuit breaker** (3 consecutive failures → lock out provider)
-2. **⬜ 3-12 — Strict input validation** (Zod schemas on all API routes)
-3. **⬜ 3-13 — Error Boundaries** (Human-readable pipeline failures in UI)
+2. **✅ 3-12 — Strict input validation** (Zod schemas on all API routes)
+3. **✅ 3-13 — Error Boundaries** (Human-readable pipeline failures in UI)
 
 ### Step 4: Beyond V1 (Phase 4)
 - **⬜ Full-Stack App Generation** (Express backend + DB generation)

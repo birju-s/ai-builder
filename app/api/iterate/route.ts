@@ -1,15 +1,33 @@
+import { z } from 'zod'
 import { runIterator } from '@/lib/agents/iterator'
 import { addVersion } from '@/lib/store/project-store'
 import { createSandboxService } from '@/lib/sandbox/service'
+
+const iterateSchema = z.object({
+  sandboxId: z.string().min(1, 'sandboxId is required'),
+  message: z.string().min(1, 'message is required'),
+  files: z.array(z.object({
+    path: z.string(),
+    content: z.string(),
+  })),
+  projectId: z.string().optional(),
+})
 
 export const maxDuration = 300
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: Request) {
-  let body: { sandboxId?: string; message?: string; files?: Array<{ path: string; content: string }>; projectId?: string }
+  let body: z.infer<typeof iterateSchema>
   try {
-    body = await req.json()
-  } catch {
+    const rawBody = await req.json()
+    body = iterateSchema.parse(rawBody)
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return new Response(JSON.stringify({ error: 'Validation failed', issues: error.issues }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
     return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
@@ -17,12 +35,6 @@ export async function POST(req: Request) {
   }
 
   const { sandboxId, message, files } = body
-  if (!sandboxId || !message?.trim() || !Array.isArray(files)) {
-    return new Response(
-      JSON.stringify({ error: 'sandboxId, message, and files are required' }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } }
-    )
-  }
 
   const encoder = new TextEncoder()
   const stream = new ReadableStream({

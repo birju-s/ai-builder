@@ -129,7 +129,7 @@ function generateNextConfig(): string {
 
 function generateGlobalsCss(colors: DesignSystem['colors'], borderRadius: string): string {
   return [
-    '@import "tailwindcss";',
+    '@import "../node_modules/tailwindcss/index.css";',
     '',
     '@theme inline {',
     '  --color-background: var(--background);',

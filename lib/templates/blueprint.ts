@@ -441,3 +441,30 @@ function validateBlueprint(raw: unknown, prompt: string): Blueprint {
 
   return bp
 }
+
+export function formatPlanMd(bp: Blueprint): string {
+  const md = []
+  md.push(`# ${bp.name}`)
+  md.push(`> ${bp.description}`)
+  md.push('')
+  if (bp.prompt) {
+    md.push(`**Prompt:** ${bp.prompt}`)
+    md.push('')
+  }
+  md.push('## Design System')
+  md.push(`- **Mood:** ${bp.designSystem.mood}`)
+  md.push(`- **Colors:** Primary (${bp.designSystem.colors.primary}), Secondary (${bp.designSystem.colors.secondary}), Accent (${bp.designSystem.colors.accent}), Background (${bp.designSystem.colors.background})`)
+  md.push(`- **Typography:** ${bp.designSystem.typography.displayFont} (Display), ${bp.designSystem.typography.bodyFont} (Body)`)
+  md.push('')
+  md.push('## Pages')
+  for (const page of bp.pages) {
+    md.push(`### ${page.name} (\`${page.route}\`)`)
+    for (const [i, section] of page.sections.entries()) {
+      md.push(`${i + 1}. **${section.type}** (\`#${section.id}\`)`)
+      if (section.headline) md.push(`   - *Headline:* ${section.headline}`)
+      if (section.subtext) md.push(`   - *Subtext:* ${section.subtext}`)
+    }
+    md.push('')
+  }
+  return md.join('\n')
+}

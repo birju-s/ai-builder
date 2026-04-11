@@ -30,7 +30,7 @@ export default function Home() {
   const [isRunning, setIsRunning] = useState(false)
   const [blueprint, setBlueprint] = useState<Blueprint | null>(null)
   const [currentPrompt, setCurrentPrompt] = useState('')
-  const [usePlanMode, setUsePlanMode] = useState(false)
+  const [usePlanMode, setUsePlanMode] = useState(true)
   const [rightTab, setRightTab] = useState<'preview' | 'code'>('preview')
 
   const runGenerate = useCallback(async (prompt: string, approvedBlueprint?: Blueprint) => {

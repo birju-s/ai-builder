@@ -1,5 +1,5 @@
 import { createLogger } from '@/lib/logger'
-import { generateBlueprint } from '@/lib/templates/blueprint'
+import { generateBlueprint, formatPlanMd } from '@/lib/templates/blueprint'
 import { generateDeterministicFiles } from '@/lib/templates/deterministic'
 import generatedSitePackage from '@/lib/templates/generated-site-package.json'
 import { generateSkeletonFiles, runDeveloperEnrichment } from '@/lib/agents/developer'
@@ -199,8 +199,20 @@ export async function runPipeline(prompt: string, emit: EmitFn, preApprovedBluep
 
     // Write deterministic files immediately + start dependency preparation
     const writeTimer = log.time('sandbox-write-deterministic')
-    await sandbox.writeFiles(deterministicFiles)
-    writeTimer.end({ files: deterministicFiles.length })
+    const planMdContent = formatPlanMd(state.blueprint)
+    
+    state.files.push({
+      path: 'plan.md',
+      content: planMdContent,
+      sizeBytes: new TextEncoder().encode(planMdContent).length,
+      generationTimeMs: 0,
+    })
+
+    await sandbox.writeFiles([
+      ...deterministicFiles,
+      { path: 'plan.md', content: planMdContent }
+    ])
+    writeTimer.end({ files: deterministicFiles.length + 1 })
     emitProgress(
       emit,
       usingPrebuiltTemplate

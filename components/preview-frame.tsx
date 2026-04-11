@@ -22,6 +22,9 @@ export function PreviewFrame({ url, stage }: PreviewFrameProps) {
             <span className="text-xs text-neutral-400 font-mono ml-2 truncate max-w-md">
               {url}
             </span>
+            <span className="text-xs text-neutral-500 bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded-md ml-2 hidden md:inline-block border border-neutral-200 dark:border-neutral-700">
+              💡 Alt+Click any element to edit its source
+            </span>
           </div>
           <a
             href={url}

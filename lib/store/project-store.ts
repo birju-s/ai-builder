@@ -119,6 +119,36 @@ export async function getProject(id: string): Promise<ProjectWithVersions | null
   return readProject(id)
 }
 
+export async function duplicateProject(projectId: string): Promise<Project | null> {
+  const project = await readProject(projectId)
+  if (!project) return null
+
+  const newId = crypto.randomUUID()
+  const now = new Date().toISOString()
+  
+  const duplicatedProject: ProjectWithVersions = {
+    ...project,
+    id: newId,
+    name: `Copy of ${project.name}`,
+    createdAt: now,
+    updatedAt: now,
+  }
+
+  await writeProject(duplicatedProject)
+  log.info('Project duplicated', { originalId: projectId, newId })
+  
+  return {
+    id: duplicatedProject.id,
+    name: duplicatedProject.name,
+    description: duplicatedProject.description,
+    createdAt: duplicatedProject.createdAt,
+    updatedAt: duplicatedProject.updatedAt,
+    currentVersion: duplicatedProject.currentVersion,
+    sandboxId: duplicatedProject.sandboxId,
+    previewUrl: duplicatedProject.previewUrl,
+  }
+}
+
 export async function listProjects(): Promise<Project[]> {
   await ensureDir()
   const entries = await fs.readdir(DATA_DIR)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { PromptInput } from '@/components/prompt-input'
 import { PipelineStatus } from '@/components/pipeline-status'
 import { PreviewFrame } from '@/components/preview-frame'
@@ -26,6 +26,7 @@ export default function Home() {
   const [progressMessage, setProgressMessage] = useState('')
   const [progressPercent, setProgressPercent] = useState(0)
   const [files, setFiles] = useState<PipelineFile[]>([])
+  const [previousFiles, setPreviousFiles] = useState<PipelineFile[]>([])
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [sandboxId, setSandboxId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -35,6 +36,18 @@ export default function Home() {
   const [currentPrompt, setCurrentPrompt] = useState('')
   const [usePlanMode, setUsePlanMode] = useState(true)
   const [rightTab, setRightTab] = useState<'preview' | 'code'>('preview')
+  const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
+
+  useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data?.type === 'open-file' && e.data?.file) {
+        setRightTab('code')
+        setSelectedFilePath(e.data.file)
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
 
   const runGenerate = useCallback(async (prompt: string, approvedBlueprint?: Blueprint) => {
     setIsRunning(true)
@@ -305,9 +318,16 @@ export default function Home() {
                   const res = await fetch(`/api/projects/${p.id}`)
                   const data = await res.json()
                   if (data.project) {
-                    const v = data.project.versions.find((ver: ProjectVersion) => ver.version === data.project.currentVersion) || data.project.versions[0]
+                    const currentVer = data.project.currentVersion
+                    const v = data.project.versions.find((ver: ProjectVersion) => ver.version === currentVer) || data.project.versions[0]
+                    const prevV = data.project.versions.find((ver: ProjectVersion) => ver.version === currentVer - 1)
                     if (v) {
                       setFiles(v.files || [])
+                      if (prevV) {
+                        setPreviousFiles(prevV.files || [])
+                      } else {
+                        setPreviousFiles([])
+                      }
                       try {
                         setBlueprint(JSON.parse(v.blueprintJson))
                       } catch {}
@@ -328,6 +348,9 @@ export default function Home() {
           ) : (
             <CodePanel
               files={files}
+              previousFiles={previousFiles}
+              selectedPath={selectedFilePath}
+              onSelectPath={setSelectedFilePath}
               onFileEdit={sandboxId ? async (filePath, content) => {
                 setFiles((prev) => prev.map((f) => f.path === filePath ? { ...f, content } : f))
                 fetch('/api/sandbox/write', {

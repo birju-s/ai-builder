@@ -1,15 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Folder, ExternalLink, Calendar, Loader2, Play } from 'lucide-react'
+import { useEffect, useState, useCallback } from 'react'
+import { Folder, ExternalLink, Calendar, Loader2, Play, Copy } from 'lucide-react'
 import type { Project } from '@/lib/store/types'
 
 export function ProjectDashboard({ onSelectProject }: { onSelectProject?: (p: Project) => void }) {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [duplicating, setDuplicating] = useState<string | null>(null)
 
-  useEffect(() => {
+  const fetchProjects = useCallback(() => {
     fetch('/api/projects')
       .then((res) => {
         if (!res.ok) throw new Error('Failed to fetch projects')
@@ -24,6 +25,24 @@ export function ProjectDashboard({ onSelectProject }: { onSelectProject?: (p: Pr
         setLoading(false)
       })
   }, [])
+
+  useEffect(() => {
+    fetchProjects()
+  }, [fetchProjects])
+
+  const handleDuplicate = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
+    setDuplicating(id)
+    try {
+      const res = await fetch(`/api/projects/${id}/clone`, { method: 'POST' })
+      if (!res.ok) throw new Error('Failed to clone project')
+      await fetchProjects()
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setDuplicating(null)
+    }
+  }
 
   if (loading) {
     return (
@@ -105,6 +124,18 @@ export function ProjectDashboard({ onSelectProject }: { onSelectProject?: (p: Pr
                       Draft
                     </span>
                   )}
+                  <button
+                    onClick={(e) => handleDuplicate(e, project.id)}
+                    disabled={duplicating === project.id}
+                    className="flex items-center gap-1.5 rounded-lg bg-neutral-100 dark:bg-neutral-800 px-2 py-1 text-xs font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors disabled:opacity-50"
+                  >
+                    {duplicating === project.id ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Copy className="h-3 w-3" />
+                    )}
+                    Clone
+                  </button>
                   {onSelectProject && (
                     <button
                       onClick={() => onSelectProject(project)}

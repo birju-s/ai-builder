@@ -1,14 +1,19 @@
 'use client'
 
-import { createElement, useState, useCallback, useMemo } from 'react'
-import { FileCode2, FileText, File, ChevronRight, ChevronDown, Pencil, Save } from 'lucide-react'
+import { createElement, useState, useCallback, useMemo, useEffect } from 'react'
+import { FileCode2, FileText, File, ChevronRight, ChevronDown, Pencil, Save, GitCompare } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 import Editor from '@monaco-editor/react'
 
+import { DiffEditor } from '@monaco-editor/react'
+
 interface CodePanelProps {
   files: Array<{ path: string; content: string }>
+  previousFiles?: Array<{ path: string; content: string }>
   onFileEdit?: (path: string, newContent: string) => void
+  selectedPath?: string | null
+  onSelectPath?: (path: string) => void
 }
 
 interface TreeNode {
@@ -143,10 +148,21 @@ function FileTreeNode({
   )
 }
 
-export function CodePanel({ files, onFileEdit }: CodePanelProps) {
-  const [selectedPath, setSelectedPath] = useState<string | null>(
+export function CodePanel({ files, previousFiles, onFileEdit, selectedPath: externalSelectedPath, onSelectPath }: CodePanelProps) {
+  const [internalSelectedPath, setInternalSelectedPath] = useState<string | null>(
     files.length > 0 ? files[0].path.replace(/^\//, '') : null
   )
+  const [isDiffMode, setIsDiffMode] = useState(false)
+
+  const selectedPath = externalSelectedPath !== undefined ? externalSelectedPath : internalSelectedPath
+  
+  const setSelectedPath = useCallback((path: string | null) => {
+    setInternalSelectedPath(path)
+    if (path && onSelectPath) {
+      onSelectPath(path)
+    }
+  }, [onSelectPath])
+
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(() => {
     // Auto-expand all directories initially
     const dirs = new Set<string>()
@@ -188,7 +204,7 @@ export function CodePanel({ files, onFileEdit }: CodePanelProps) {
       setIsEditing(false)
       setSelectedPath(path)
     },
-    [isEditing, selectedFile, editContent, onFileEdit]
+    [isEditing, selectedFile, editContent, onFileEdit, setSelectedPath]
   )
 
   const handleStartEditing = useCallback(() => {
@@ -252,16 +268,34 @@ export function CodePanel({ files, onFileEdit }: CodePanelProps) {
               </>
             )}
           </div>
-          {selectedFile && onFileEdit && (
-            <button
-              onClick={isEditing ? handleSave : handleStartEditing}
-              className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors',
-                isEditing
-                  ? 'bg-blue-600 text-white hover:bg-blue-500'
-                  : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100'
-              )}
-            >
+          <div className="flex items-center gap-2">
+            {selectedFile && previousFiles && previousFiles.length > 0 && (
+              <button
+                onClick={() => {
+                  setIsDiffMode(!isDiffMode)
+                  if (isEditing) setIsEditing(false)
+                }}
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors',
+                  isDiffMode
+                    ? 'bg-neutral-700 text-white'
+                    : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100'
+                )}
+              >
+                <GitCompare className="h-3 w-3" />
+                Diff
+              </button>
+            )}
+            {selectedFile && onFileEdit && !isDiffMode && (
+              <button
+                onClick={isEditing ? handleSave : handleStartEditing}
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors',
+                  isEditing
+                    ? 'bg-blue-600 text-white hover:bg-blue-500'
+                    : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100'
+                )}
+              >
               {isEditing ? (
                 <>
                   <Save className="h-3 w-3" />
@@ -275,36 +309,59 @@ export function CodePanel({ files, onFileEdit }: CodePanelProps) {
               )}
             </button>
           )}
+          </div>
         </div>
 
         {/* Code display / editor */}
         <div className="flex-1 overflow-hidden relative">
           {selectedFile ? (
-            <Editor
-              height="100%"
-              language={getLanguage(selectedFile.path)}
-              theme="vs-dark"
-              value={isEditing ? editContent : selectedFile.content}
-              onChange={(value) => {
-                if (isEditing && value !== undefined) {
-                  setEditContent(value)
-                }
-              }}
-              onMount={handleEditorMount}
-              options={{
-                readOnly: !isEditing,
-                minimap: { enabled: false },
-                fontSize: 13,
-                wordWrap: 'on',
-                lineNumbers: 'on',
-                scrollBeyondLastLine: false,
-                fontFamily: 'var(--font-geist-mono), monospace',
-                padding: { top: 16, bottom: 16 },
-                tabSize: 2,
-                folding: false,
-              }}
-              loading={<div className="flex items-center justify-center h-full text-neutral-600 text-sm">Loading editor...</div>}
-            />
+            isDiffMode ? (
+              <DiffEditor
+                height="100%"
+                language={getLanguage(selectedFile.path)}
+                theme="vs-dark"
+                original={previousFiles?.find((f) => f.path === selectedFile.path)?.content || ''}
+                modified={selectedFile.content}
+                options={{
+                  readOnly: true,
+                  minimap: { enabled: false },
+                  fontSize: 13,
+                  wordWrap: 'on',
+                  lineNumbers: 'on',
+                  scrollBeyondLastLine: false,
+                  fontFamily: 'var(--font-geist-mono), monospace',
+                  padding: { top: 16, bottom: 16 },
+                  renderSideBySide: false,
+                }}
+                loading={<div className="flex items-center justify-center h-full text-neutral-600 text-sm">Loading diff...</div>}
+              />
+            ) : (
+              <Editor
+                height="100%"
+                language={getLanguage(selectedFile.path)}
+                theme="vs-dark"
+                value={isEditing ? editContent : selectedFile.content}
+                onChange={(value) => {
+                  if (isEditing && value !== undefined) {
+                    setEditContent(value)
+                  }
+                }}
+                onMount={handleEditorMount}
+                options={{
+                  readOnly: !isEditing,
+                  minimap: { enabled: false },
+                  fontSize: 13,
+                  wordWrap: 'on',
+                  lineNumbers: 'on',
+                  scrollBeyondLastLine: false,
+                  fontFamily: 'var(--font-geist-mono), monospace',
+                  padding: { top: 16, bottom: 16 },
+                  tabSize: 2,
+                  folding: false,
+                }}
+                loading={<div className="flex items-center justify-center h-full text-neutral-600 text-sm">Loading editor...</div>}
+              />
+            )
           ) : (
             <div className="flex items-center justify-center h-full text-neutral-600 text-sm">
               Select a file to view its contents

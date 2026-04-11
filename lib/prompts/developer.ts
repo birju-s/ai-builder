@@ -257,6 +257,7 @@ IMPORTANT: This is for "${blueprint.name}" — a ${blueprint.description}. The d
 - Import only the hooks, icons, and utilities you actually use. Do not leave dead imports, unused state, or unused refs behind.
 - Use the exact provided section ids for any in-page navigation. Do not invent href targets like "#portfolio" or "#features" unless those exact ids are in the provided section list.
 - If this file renders a root <section>, set its id to the matching blueprint section id for this section type.
+- CRITICAL: The outermost root element of your exported component MUST include the attribute \`data-source-file="${filePath}"\`. This is required for our Visual Edit Mode.
 
 SECTION-SPECIFIC GUIDANCE:
 ${sectionGuidance}

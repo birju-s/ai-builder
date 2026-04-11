@@ -89,6 +89,7 @@ export async function runDesigner(
     : ''
 
   const response = await provider.generateText({
+    agentId: 'designer',
     system: DESIGNER_SYSTEM,
     messages: [{
       role: 'user',

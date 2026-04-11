@@ -1,5 +1,6 @@
 import { runPipeline } from '@/lib/pipeline/orchestrator'
-import type { SSEEvent } from '@/types/pipeline'
+import { logTelemetryPipeline } from '@/lib/telemetry'
+import type { SSEEvent, SSEDoneEvent } from '@/types/pipeline'
 import type { Blueprint } from '@/types/blueprint'
 
 export const maxDuration = 300
@@ -28,6 +29,14 @@ export async function POST(req: Request) {
   const stream = new ReadableStream({
     async start(controller) {
       const emit = (event: SSEEvent) => {
+        if (event.type === 'done') {
+          const data = event.data as SSEDoneEvent
+          logTelemetryPipeline({
+            success: data.success,
+            durationMs: data.totalMs,
+          })
+        }
+        
         const data = `data: ${JSON.stringify(event)}\n\n`
         try {
           controller.enqueue(encoder.encode(data))
@@ -41,6 +50,13 @@ export async function POST(req: Request) {
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Pipeline crashed'
         emit({ type: 'error', data: { message, stage: 'failed', recoverable: false } })
+        
+        logTelemetryPipeline({
+          success: false,
+          durationMs: 0,
+          error: message,
+        })
+        
         emit({ type: 'done', data: { success: false, previewUrl: null, totalMs: 0 } })
       } finally {
         try {

@@ -63,6 +63,7 @@ export async function runArchitect(prompt: string): Promise<ArchitectOutput> {
   log.info('Architect invoked', { prompt: prompt.slice(0, 200) })
 
   const response = await provider.generateText({
+    agentId: 'architect',
     system: ARCHITECT_SYSTEM,
     messages: [{ role: 'user', content: prompt }],
     maxTokens: 2048,

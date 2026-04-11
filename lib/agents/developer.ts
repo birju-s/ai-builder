@@ -199,6 +199,7 @@ async function generateFile(
   const timer = log.time(`generate ${filePath}`)
 
   const response = await provider.generateText({
+    agentId: 'developer',
     system: DEVELOPER_SYSTEM_PROMPT,
     cacheSystem: true,
     messages: [

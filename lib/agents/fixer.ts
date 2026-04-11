@@ -119,6 +119,7 @@ export async function fixBuildErrors(
 
     try {
       const response = await provider.generateText({
+        agentId: 'fixer',
         system: FIXER_SYSTEM,
         messages: [{
           role: 'user',

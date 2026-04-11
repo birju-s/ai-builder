@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createLogger } from '@/lib/logger'
+import { logTelemetryTokenUsage } from '@/lib/telemetry'
 import type { LLMProvider, LLMRequest, LLMResponse } from '@/lib/llm/types'
 
 const log = createLogger('llm:gemini')
@@ -51,6 +52,15 @@ export class GeminiProvider implements LLMProvider {
       outputTokens,
     })
 
+    logTelemetryTokenUsage({
+      agent: req.agentId || 'unknown',
+      provider: this.name,
+      model: this.model,
+      inputTokens,
+      outputTokens,
+      latencyMs,
+    })
+
     return {
       text,
       inputTokens,
@@ -89,8 +99,24 @@ export class GeminiProvider implements LLMProvider {
 
     const latencyMs = Math.round(performance.now() - start)
 
+    const response = await streamResult.response
+    const usage = response.usageMetadata
+    const inputTokens = usage?.promptTokenCount ?? 0
+    const outputTokens = usage?.candidatesTokenCount ?? 0
+
     log.info('streamText complete', {
       model: this.model,
+      inputTokens,
+      outputTokens,
+      latencyMs,
+    })
+
+    logTelemetryTokenUsage({
+      agent: req.agentId || 'unknown',
+      provider: this.name,
+      model: this.model,
+      inputTokens,
+      outputTokens,
       latencyMs,
     })
   }

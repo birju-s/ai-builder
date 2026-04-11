@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createLogger } from '@/lib/logger'
+import { logTelemetryTokenUsage } from '@/lib/telemetry'
 import type { LLMProvider, LLMRequest, LLMResponse } from '@/lib/llm/types'
 
 const log = createLogger('llm:anthropic')
@@ -35,12 +36,26 @@ export class AnthropicProvider implements LLMProvider {
       .map((b) => b.text)
       .join('')
 
+    const cacheCreationInputTokens = (message.usage as unknown as Record<string, number>).cache_creation_input_tokens
+    const cacheReadInputTokens = (message.usage as unknown as Record<string, number>).cache_read_input_tokens
+
     const latencyMs = timer.end({
       model: this.model,
       inputTokens: message.usage.input_tokens,
       outputTokens: message.usage.output_tokens,
-      cacheCreation: (message.usage as unknown as Record<string, number>).cache_creation_input_tokens,
-      cacheRead: (message.usage as unknown as Record<string, number>).cache_read_input_tokens,
+      cacheCreation: cacheCreationInputTokens,
+      cacheRead: cacheReadInputTokens,
+    })
+
+    logTelemetryTokenUsage({
+      agent: req.agentId || 'unknown',
+      provider: this.name,
+      model: this.model,
+      inputTokens: message.usage.input_tokens,
+      outputTokens: message.usage.output_tokens,
+      cacheCreationInputTokens,
+      cacheReadInputTokens,
+      latencyMs,
     })
 
     return {
@@ -49,6 +64,8 @@ export class AnthropicProvider implements LLMProvider {
       outputTokens: message.usage.output_tokens,
       model: message.model,
       latencyMs,
+      cacheCreationInputTokens,
+      cacheReadInputTokens,
     }
   }
 
@@ -79,13 +96,27 @@ export class AnthropicProvider implements LLMProvider {
 
     const finalMessage = await stream.finalMessage()
     const latencyMs = Math.round(performance.now() - start)
+    
+    const cacheCreationInputTokens = (finalMessage.usage as unknown as Record<string, number>).cache_creation_input_tokens
+    const cacheReadInputTokens = (finalMessage.usage as unknown as Record<string, number>).cache_read_input_tokens
 
     log.info('streamText complete', {
       model: this.model,
       inputTokens: finalMessage.usage.input_tokens,
       outputTokens: finalMessage.usage.output_tokens,
-      cacheCreation: (finalMessage.usage as unknown as Record<string, number>).cache_creation_input_tokens,
-      cacheRead: (finalMessage.usage as unknown as Record<string, number>).cache_read_input_tokens,
+      cacheCreation: cacheCreationInputTokens,
+      cacheRead: cacheReadInputTokens,
+      latencyMs,
+    })
+
+    logTelemetryTokenUsage({
+      agent: req.agentId || 'unknown',
+      provider: this.name,
+      model: this.model,
+      inputTokens: finalMessage.usage.input_tokens,
+      outputTokens: finalMessage.usage.output_tokens,
+      cacheCreationInputTokens,
+      cacheReadInputTokens,
       latencyMs,
     })
   }

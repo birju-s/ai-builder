@@ -62,6 +62,7 @@ export async function runIterator(
     .join('\n\n')
 
   const response = await provider.generateText({
+    agentId: 'iterator',
     system: ITERATOR_SYSTEM,
     messages: [
       {

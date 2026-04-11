@@ -10,6 +10,7 @@ export interface LLMRequest {
   maxTokens: number
   temperature?: number
   cacheSystem?: boolean // Enable prompt caching for the system prompt (Anthropic only)
+  agentId?: string // Name of the calling agent, used for telemetry
 }
 
 export interface LLMMessage {
@@ -23,4 +24,6 @@ export interface LLMResponse {
   outputTokens: number
   model: string
   latencyMs: number
+  cacheCreationInputTokens?: number
+  cacheReadInputTokens?: number
 }

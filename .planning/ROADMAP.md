@@ -69,7 +69,7 @@
 | S1 | Deterministic files | ✅ | ~5 LLM slots | done in Phase 1a |
 | S2 | Sandbox pre-warming | ✅ | 2-5s | done in Phase 1a |
 | S3 | Parallel DAG file generation | ✅ | 40-50s | done in Phase 1a |
-| S4 | Provider interleaving (Sonnet + Gemini simultaneously) | ⬜ | 2x throughput | route hero/nav → Sonnet, cards/grids → Gemini |
+| S4 | Provider interleaving (Sonnet + Gemini simultaneously) | ✅ | 2x throughput | route hero/nav → Sonnet, cards/grids → Gemini |
 | S5 | Anthropic prompt caching (Developer Agent prefix) | ✅ | 73% cost cut | primed-parallel pattern; fire parallels on first token of cache primer |
 | S6 | Streaming files to sandbox + overlapped install | ✅ | 10-15s | done in Phase 1a |
 | S7 | Two-phase generation (Haiku skeleton → Sonnet enrichment) | ⬜ | 12s perceived TTFP | skeleton at T=12s, enrichment hot-patches via HMR |
@@ -160,7 +160,7 @@
 
 1. **✅ 1b-13** — Rebuild E2B template → unlocks full S9 speedup (10-15s saved)
 2. **✅ S8** — Progressive UI feedback → biggest perceived performance improvement
-3. **⬜ S4** — Provider interleaving → doubles throughput, reduces rate-limit risk
+3. **✅ S4** — Provider interleaving → doubles throughput, reduces rate-limit risk
 4. **✅ S5** — Anthropic prompt caching → 73% cost reduction on Developer Agent
 5. **⬜ 2b-3** — Telemetry feedback loop → needed to actually measure the reliability target
 6. **⬜ S7** — Two-phase generation → perceived TTFP drops to ~12s

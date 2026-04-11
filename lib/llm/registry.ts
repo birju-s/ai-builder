@@ -77,11 +77,16 @@ const PROVIDER_PRIORITY = ['anthropic', 'gemini']
 
 class FallbackProvider implements LLMProvider {
   readonly name = 'fallback'
+  private priority: string[]
+
+  constructor(priority: string[] = PROVIDER_PRIORITY) {
+    this.priority = priority
+  }
 
   async generateText(req: LLMRequest): Promise<LLMResponse> {
     const errors: string[] = []
 
-    for (const name of PROVIDER_PRIORITY) {
+    for (const name of this.priority) {
       if (!isAvailable(name)) {
         log.info('Skipping provider (circuit open)', { provider: name })
         continue
@@ -104,7 +109,7 @@ class FallbackProvider implements LLMProvider {
   }
 
   async *streamText(req: LLMRequest): AsyncGenerator<string> {
-    for (const name of PROVIDER_PRIORITY) {
+    for (const name of this.priority) {
       if (!isAvailable(name)) continue
 
       try {
@@ -132,6 +137,11 @@ export function getDefaultProvider(): LLMProvider {
     defaultProvider = new FallbackProvider()
   }
   return defaultProvider
+}
+
+export function getProviderWithFallback(preferredName: string): LLMProvider {
+  const priority = [preferredName, ...PROVIDER_PRIORITY.filter(n => n !== preferredName)]
+  return new FallbackProvider(priority)
 }
 
 export { getProvider }

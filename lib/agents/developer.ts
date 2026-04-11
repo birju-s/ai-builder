@@ -1,5 +1,5 @@
 import { createLogger } from '@/lib/logger'
-import { getDefaultProvider } from '@/lib/llm/registry'
+import { getDefaultProvider, getProviderWithFallback } from '@/lib/llm/registry'
 import { DEVELOPER_SYSTEM_PROMPT, buildFilePrompt } from '@/lib/prompts/developer'
 import { validateFile } from '@/lib/pipeline/validator'
 import type { Blueprint, GeneratedFile, FileManifest } from '@/types/blueprint'
@@ -37,6 +37,15 @@ function getSectionComponentPath(sectionType: string): string {
 function getSectionTypeForFile(filePath: string): string | null {
   const match = filePath.match(/sections\/(\w+)Section\.tsx$/i)
   return match ? match[1].toLowerCase() : null
+}
+
+function getProviderNameForFile(filePath: string): string {
+  const sectionType = getSectionTypeForFile(filePath)
+  if (!sectionType) return 'anthropic'
+
+  // Route complex/grid-heavy sections to Gemini to interleave load and double throughput
+  const geminiSections = new Set(['features', 'services', 'gallery', 'team', 'testimonials', 'menu', 'pricing', 'schedule', 'faq'])
+  return geminiSections.has(sectionType) ? 'gemini' : 'anthropic'
 }
 
 function getBlueprintSectionByType(
@@ -183,9 +192,10 @@ async function generateFile(
   filePath: string,
   fileDescription: string,
   blueprint: Blueprint,
-  existingFiles: string[]
+  existingFiles: string[],
+  preferredProvider?: string
 ): Promise<GeneratedFile> {
-  const provider = getDefaultProvider()
+  const provider = preferredProvider ? getProviderWithFallback(preferredProvider) : getDefaultProvider()
   const timer = log.time(`generate ${filePath}`)
 
   const response = await provider.generateText({
@@ -352,9 +362,10 @@ export async function runDeveloperAgent(
 
   // Phase 1: Generate ALL section components in parallel
   // Components have no inter-dependencies, so we can fire them all at once.
+  // We use Provider Interleaving (S4) to route grid-heavy components to Gemini and others to Anthropic.
   // Use Promise.allSettled to prevent one failure from killing everything.
   const componentPromises = componentFiles.map((m) =>
-    generateFile(m.path, m.description, blueprint, [])
+    generateFile(m.path, m.description, blueprint, [], getProviderNameForFile(m.path))
       .catch((err) => {
         log.error('Component generation failed', { file: m.path, error: (err as Error).message })
         return null

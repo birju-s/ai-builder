@@ -84,7 +84,7 @@
 | 2b-1 | Circuit breaker (3 consecutive failures → route to fallback for 5 min) | ✅ | FR-7.3 — Implemented in `lib/llm/registry.ts` |
 | 2b-2 | Per-agent timeout with provider fallback (Arch=15s, Designer=10s, Dev=20s/file) | ⬜ | FR arch comment |
 | 2b-3 | Telemetry feedback loop (log every fix: layer, type, file, success/failure) | ✅ | FR-3.8, NFR-6.4 — logged to `.siteforge/telemetry/pipeline_fixes.jsonl` |
-| 2b-4 | Design system rules (`.siteforge/rules/`) | ⬜ | accessibility rules, brand constraints, anti-template rules |
+| 2b-4 | Design system rules (`.siteforge/rules/`) | ✅ | accessibility rules, brand constraints, anti-template rules |
 | 2b-5 | Pipeline success rate metric endpoint (`/api/metrics`) | ✅ | NFR-6.3 — Implemented in `/api/metrics` |
 | 2b-6 | Per-agent token usage logging | ✅ | NFR-6.1 — Implemented in `.siteforge/telemetry/token_usage.jsonl` |
 | 2b-7 | Anthropic prompt caching hit rate tracking | ✅ | target >80% — Implemented in `/api/metrics` |
@@ -149,10 +149,10 @@
 | NFR-2.3 | Build errors auto-fixed | >70% | 🔄 layers A+B+C in place |
 | NFR-3.1 | Concurrent sessions | 20 Phase 1 | ⬜ not load-tested |
 | NFR-5.1 | LLM cost per website gen | <$0.60 | ⬜ not measured |
-| NFR-6.1 | Per-agent token + latency logs | structured JSON | 🔄 timing logged, tokens not yet |
+| NFR-6.1 | Per-agent token + latency logs | structured JSON | ✅ implemented via telemetry token logging |
 | NFR-6.2 | Per-pipeline trace | per-agent timings | ✅ `pipeline completed` log has all timings |
-| NFR-6.3 | Pipeline success rate metric | queryable | ⬜ |
-| NFR-6.4 | Validator fix logs | `pipeline_fixes` | ⬜ |
+| NFR-6.3 | Pipeline success rate metric | queryable | ✅ `/api/metrics` |
+| NFR-6.4 | Validator fix logs | `pipeline_fixes` | ✅ `.siteforge/telemetry/pipeline_fixes.jsonl` |
 
 ---
 
@@ -163,8 +163,8 @@ To avoid scattered priorities, this is our strict, linear sequence of execution 
 ### Step 1: Speed, Reliability, & Quality Core
 1. **✅ S7 — Two-phase generation** (Haiku skeleton → Sonnet enrichment for <15s TTFP)
 2. **✅ 2c-4 — Hot-patch iteration** (Patch single files in the sandbox via HMR for rapid iteration)
-3. **⬜ 2b-3 — Telemetry feedback loop** (Measure reliability fixes in real-time)
-4. **⬜ 2b-4 — Design system rules** (Standardized aesthetic rules for Architect/Designer)
+3. **✅ 2b-3 — Telemetry feedback loop** (Measure reliability fixes in real-time)
+4. **✅ 2b-4 — Design system rules** (Standardized aesthetic rules for Architect/Designer)
 
 ### Step 2: "Plan Mode" User Experience
 1. **⬜ 3-1 & 3-2 — Plan Mode UI & Editor** (Let users review and edit the structured JSON blueprint before coding begins)
@@ -172,7 +172,7 @@ To avoid scattered priorities, this is our strict, linear sequence of execution 
 3. **⬜ 3-5 — Project Dashboard** (List, thumbnails, project states)
 
 ### Step 3: Hardening & V1 Finalization
-1. **⬜ 2b-1 — Circuit breaker** (3 consecutive failures → lock out provider)
+1. **✅ 2b-1 — Circuit breaker** (3 consecutive failures → lock out provider)
 2. **⬜ 3-12 — Strict input validation** (Zod schemas on all API routes)
 3. **⬜ 3-13 — Error Boundaries** (Human-readable pipeline failures in UI)
 

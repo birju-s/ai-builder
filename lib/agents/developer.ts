@@ -1,6 +1,7 @@
 import { createLogger } from '@/lib/logger'
 import { getDefaultProvider, getProviderWithFallback } from '@/lib/llm/registry'
 import { DEVELOPER_SYSTEM_PROMPT, buildFilePrompt } from '@/lib/prompts/developer'
+import { getDesignSystemRules } from '@/lib/prompts/rules'
 import { validateFile } from '@/lib/pipeline/validator'
 import type { Blueprint, GeneratedFile, FileManifest } from '@/types/blueprint'
 import type { FileGeneratedCallback } from '@/lib/agents/types'
@@ -200,7 +201,7 @@ async function generateFile(
 
   const response = await provider.generateText({
     agentId: 'developer',
-    system: DEVELOPER_SYSTEM_PROMPT,
+    system: DEVELOPER_SYSTEM_PROMPT + getDesignSystemRules(),
     cacheSystem: true,
     messages: [
       {

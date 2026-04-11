@@ -1,5 +1,6 @@
 import { getDefaultProvider } from '@/lib/llm/registry'
 import { createLogger } from '@/lib/logger'
+import { getDesignSystemRules } from '@/lib/prompts/rules'
 
 const log = createLogger('agent:architect')
 
@@ -64,7 +65,7 @@ export async function runArchitect(prompt: string): Promise<ArchitectOutput> {
 
   const response = await provider.generateText({
     agentId: 'architect',
-    system: ARCHITECT_SYSTEM,
+    system: ARCHITECT_SYSTEM + getDesignSystemRules(),
     messages: [{ role: 'user', content: prompt }],
     maxTokens: 2048,
     temperature: 0.7,

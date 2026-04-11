@@ -1,5 +1,6 @@
 import { getDefaultProvider } from '@/lib/llm/registry'
 import { createLogger } from '@/lib/logger'
+import { getDesignSystemRules } from '@/lib/prompts/rules'
 import type { DesignSystem } from '@/types/blueprint'
 
 const log = createLogger('agent:designer')
@@ -90,7 +91,7 @@ export async function runDesigner(
 
   const response = await provider.generateText({
     agentId: 'designer',
-    system: DESIGNER_SYSTEM,
+    system: DESIGNER_SYSTEM + getDesignSystemRules(),
     messages: [{
       role: 'user',
       content: `Business: ${businessDescription}${promptContext}\n\nSections on the page: ${sections.join(', ')}\n\nDesign a complete visual system for this website. Make the layout feel premium and current, avoid repetitive boxy grids, prefer strong hero art direction plus balanced section variety, choose a typography/spacing rhythm with clear hierarchy, and favor a readable glass/frosted navbar when the hero image is visually busy.`,

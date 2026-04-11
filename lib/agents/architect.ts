@@ -98,7 +98,7 @@ export async function runArchitect(prompt: string): Promise<ArchitectOutput> {
       agentId: 'architect',
       system: systemPrompt,
       messages: [{ role: 'user', content: prompt }],
-      maxTokens: 2048,
+      maxTokens: 8192,
       temperature: 0.7,
     })
 
@@ -129,7 +129,7 @@ export async function runArchitect(prompt: string): Promise<ArchitectOutput> {
     agentId: 'architect',
     system: systemPrompt,
     messages: [{ role: 'user', content: prompt }],
-    maxTokens: 2048,
+    maxTokens: 8192,
     temperature: 0.7,
   })
 

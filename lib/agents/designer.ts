@@ -96,7 +96,7 @@ export async function runDesigner(
       role: 'user',
       content: `Business: ${businessDescription}${promptContext}\n\nSections on the page: ${sections.join(', ')}\n\nDesign a complete visual system for this website. Make the layout feel premium and current, avoid repetitive boxy grids, prefer strong hero art direction plus balanced section variety, choose a typography/spacing rhythm with clear hierarchy, and favor a readable glass/frosted navbar when the hero image is visually busy.`,
     }],
-    maxTokens: 1024,
+    maxTokens: 4096,
     temperature: 0.7,
   })
 

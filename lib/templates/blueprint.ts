@@ -374,7 +374,7 @@ async function generateBlueprintSinglePrompt(
   const response = await provider.generateText({
     system: BLUEPRINT_SYSTEM,
     messages: [{ role: 'user', content: prompt }],
-    maxTokens: 2048,
+    maxTokens: 8192,
     temperature: 0.7,
   })
 

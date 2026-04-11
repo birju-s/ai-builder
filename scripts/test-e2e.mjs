@@ -1,6 +1,6 @@
 import { spawn } from 'child_process'
 
-const prompt = "A clean, minimalist landing page for an open-source productivity app named 'FocusStream', featuring a hero section, feature list, and pricing."
+const prompt = "A modern blog platform for developers where users can read posts, create an account, log in, and leave comments on articles. It must include a user dashboard to manage profile settings."
 
 async function runTest() {
   console.log('1. Starting Next.js dev server...')

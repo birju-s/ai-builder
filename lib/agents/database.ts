@@ -7,12 +7,12 @@ const log = createLogger('agent:database')
 const DATABASE_SYSTEM = `You are the Database Architect for SiteForge. You generate a valid Prisma schema (schema.prisma) based on the provided JSON blueprint.
 
 RULES:
-- Use PostgreSQL as the provider.
+- Use SQLite as the provider.
 - Output ONLY the raw Prisma schema code. No markdown fences.
 - Ensure all models have an @id field.
 - Ensure proper relationships between models if necessary.
 - Include standard Prisma generator block (provider = "prisma-client-js").
-- Include standard datasource block (provider = "postgresql", url = env("DATABASE_URL")).
+- Include standard datasource block (provider = "sqlite", url = "file:./dev.db").
 `
 
 export async function generatePrismaSchema(blueprint: Blueprint): Promise<string> {

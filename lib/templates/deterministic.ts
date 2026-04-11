@@ -57,8 +57,8 @@ function generatePackageJson(appType: 'website' | 'fullstack'): string {
     }
     pkg.scripts = {
       ...(pkg.scripts as Record<string, string>),
-      'dev': 'tsx watch server.ts',
-      'build': 'prisma generate && next build',
+      'dev': 'prisma db push && tsx watch server.ts',
+      'build': 'prisma db push && prisma generate && next build',
       'start': 'tsx server.ts',
     }
   }
@@ -303,10 +303,6 @@ export function generateDeterministicFiles(
       content: generateServerTs(),
     })
     files.push({
-      path: 'docker-compose.yml',
-      content: generateDockerCompose(),
-    })
-    files.push({
       path: 'prisma/client.ts',
       content: `import { PrismaClient } from '@prisma/client'\n\nconst prisma = new PrismaClient()\nexport default prisma\n`,
     })
@@ -347,24 +343,5 @@ function generateServerTs(): string {
     '    console.log(`> Ready on http://localhost:${port}`)',
     '  })',
     '})',
-  ].join('\n')
-}
-
-function generateDockerCompose(): string {
-  return [
-    'version: "3.8"',
-    'services:',
-    '  postgres:',
-    '    image: postgres:15-alpine',
-    '    environment:',
-    '      POSTGRES_USER: admin',
-    '      POSTGRES_PASSWORD: password',
-    '      POSTGRES_DB: siteforge',
-    '    ports:',
-    '      - "5432:5432"',
-    '    volumes:',
-    '      - postgres_data:/var/lib/postgresql/data',
-    'volumes:',
-    '  postgres_data:',
   ].join('\n')
 }

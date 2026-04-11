@@ -116,7 +116,7 @@
 | 3-7 | Diff view between two versions | ✅ | FR-6.3 |
 | 3-8 | In-browser code editor (Monaco, lazy-loaded) | ✅ | FR-5.4 |
 | 3-9 | Visual edit mode (click preview element → source component) | ✅ | FR-5.5 |
-| 3-10 | Architect two-pass: Haiku ambiguity score → escalate to Sonnet | ⬜ | saves ~80% Architect cost |
+| 3-10 | Architect two-pass: Haiku ambiguity score → escalate to Sonnet | ✅ | saves ~80% Architect cost |
 | 3-11 | Rate limiting (10 gen/hr free, 50/hr pro) | ⬜ | FR arch comment |
 | 3-12 | Input validation (Zod) on every route handler | ✅ | NFR-4.6 |
 | 3-13 | Error boundaries + human-readable error mapping in UI | ✅ | NFR-8.3 |

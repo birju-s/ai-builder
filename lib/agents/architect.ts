@@ -1,4 +1,5 @@
 import { getDefaultProvider } from '@/lib/llm/registry'
+import { AnthropicProvider } from '@/lib/llm/anthropic'
 import { createLogger } from '@/lib/logger'
 import { getDesignSystemRules } from '@/lib/prompts/rules'
 
@@ -10,6 +11,7 @@ MOST IMPORTANT RULE: The website you plan MUST match EXACTLY what the user asked
 
 OUTPUT FORMAT (strict JSON, no markdown):
 {
+  "ambiguity_score": 1,
   "name": "Business Name",
   "description": "One-line description matching the user's request",
   "appType": "website",
@@ -28,6 +30,7 @@ OUTPUT FORMAT (strict JSON, no markdown):
 }
 
 RULES:
+- Evaluate the user's prompt and assign an "ambiguity_score" from 1-10. 1 means extremely detailed and specific, 10 means very vague (e.g. "make me a site").
 - READ THE USER'S PROMPT CAREFULLY. The name, description, headlines, and subtext must ALL reflect the specific business/person/topic they described.
 - Every website MUST have navbar, hero, and footer sections.
 - Choose 3-5 additional sections that make sense for THIS specific business.
@@ -42,6 +45,7 @@ RULES:
 - Output ONLY valid JSON.`
 
 export interface ArchitectOutput {
+  ambiguity_score?: number
   name: string
   description: string
   appType: 'website' | 'fullstack'
@@ -58,20 +62,55 @@ export interface ArchitectOutput {
 }
 
 export async function runArchitect(prompt: string): Promise<ArchitectOutput> {
-  const provider = getDefaultProvider()
   const timer = log.time('architect')
+  log.info('Architect invoked (pass 1: Haiku)', { prompt: prompt.slice(0, 200) })
 
-  log.info('Architect invoked', { prompt: prompt.slice(0, 200) })
+  const systemPrompt = ARCHITECT_SYSTEM + getDesignSystemRules()
+  
+  // Pass 1: Try with Haiku (fast & cheap)
+  const haikuProvider = new AnthropicProvider('claude-3-5-haiku-20241022')
+  
+  try {
+    const haikuResponse = await haikuProvider.generateText({
+      agentId: 'architect',
+      system: systemPrompt,
+      messages: [{ role: 'user', content: prompt }],
+      maxTokens: 2048,
+      temperature: 0.7,
+    })
 
+    let text = haikuResponse.text.trim()
+    if (text.startsWith('```')) {
+      text = text.replace(/^```\w*\n?/, '').replace(/\n?```$/, '')
+    }
+
+    const output = JSON.parse(text) as ArchitectOutput
+    
+    // If ambiguity score is low, Haiku's output is good enough
+    if (output.ambiguity_score && output.ambiguity_score <= 6) {
+      log.info('Architect pass 1 succeeded', { ambiguity: output.ambiguity_score })
+      timer.end({ tokens: haikuResponse.inputTokens + haikuResponse.outputTokens, model: 'haiku' })
+      return output
+    }
+    
+    log.info('Architect escalating to Sonnet due to ambiguity', { ambiguity: output.ambiguity_score })
+  } catch (err) {
+    log.warn('Architect pass 1 failed, escalating to Sonnet', { error: err instanceof Error ? err.message : String(err) })
+  }
+
+  // Pass 2: Escalate to Sonnet (default provider)
+  const provider = getDefaultProvider()
+  log.info('Architect pass 2: Sonnet')
+  
   const response = await provider.generateText({
     agentId: 'architect',
-    system: ARCHITECT_SYSTEM + getDesignSystemRules(),
+    system: systemPrompt,
     messages: [{ role: 'user', content: prompt }],
     maxTokens: 2048,
     temperature: 0.7,
   })
 
-  timer.end({ tokens: response.inputTokens + response.outputTokens })
+  timer.end({ tokens: response.inputTokens + response.outputTokens, model: 'sonnet' })
 
   let text = response.text.trim()
   if (text.startsWith('```')) {
@@ -81,7 +120,7 @@ export async function runArchitect(prompt: string): Promise<ArchitectOutput> {
   try {
     return JSON.parse(text) as ArchitectOutput
   } catch {
-    log.error('Architect parse failed', { text: text.slice(0, 500) })
+    log.error('Architect pass 2 failed', { text: text.slice(0, 500) })
     throw new Error('Failed to parse architect output')
   }
 }

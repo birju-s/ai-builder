@@ -39,6 +39,8 @@ export class AnthropicProvider implements LLMProvider {
       model: this.model,
       inputTokens: message.usage.input_tokens,
       outputTokens: message.usage.output_tokens,
+      cacheCreation: (message.usage as unknown as Record<string, number>).cache_creation_input_tokens,
+      cacheRead: (message.usage as unknown as Record<string, number>).cache_read_input_tokens,
     })
 
     return {
@@ -54,10 +56,14 @@ export class AnthropicProvider implements LLMProvider {
     log.info('streamText start', { model: this.model })
     const start = performance.now()
 
+    const system: Anthropic.MessageCreateParams['system'] = req.cacheSystem
+      ? [{ type: 'text' as const, text: req.system, cache_control: { type: 'ephemeral' as const } }]
+      : req.system
+
     const stream = this.client.messages.stream({
       model: this.model,
       max_tokens: req.maxTokens,
-      system: req.system,
+      system,
       messages: req.messages,
       ...(req.temperature !== undefined && { temperature: req.temperature }),
     })
@@ -78,6 +84,8 @@ export class AnthropicProvider implements LLMProvider {
       model: this.model,
       inputTokens: finalMessage.usage.input_tokens,
       outputTokens: finalMessage.usage.output_tokens,
+      cacheCreation: (finalMessage.usage as unknown as Record<string, number>).cache_creation_input_tokens,
+      cacheRead: (finalMessage.usage as unknown as Record<string, number>).cache_read_input_tokens,
       latencyMs,
     })
   }

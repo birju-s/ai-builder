@@ -7,6 +7,7 @@ export interface Project {
   currentVersion: number
   sandboxId: string | null
   previewUrl: string | null
+  githubUrl?: string
 }
 
 export interface ProjectVersion {

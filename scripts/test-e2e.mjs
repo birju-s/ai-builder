@@ -70,7 +70,7 @@ async function runTest() {
             previewUrl = event.data.previewUrl
             totalMs = event.data.totalMs
           }
-        } catch (e) {}
+        } catch (_) {}
       }
     }
 

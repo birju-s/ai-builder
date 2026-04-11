@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { FolderOpen, Trash2, ExternalLink, Plus, Clock } from 'lucide-react'
+import { FolderOpen, Trash2, ExternalLink, Plus, Clock, Github } from 'lucide-react'
 import type { Project } from '@/lib/store/types'
 
 function timeAgo(dateStr: string): string {
@@ -26,6 +26,7 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [syncingId, setSyncingId] = useState<string | null>(null)
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -57,6 +58,29 @@ export default function ProjectsPage() {
       setError(err instanceof Error ? err.message : 'Failed to delete project')
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  const handleSync = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
+    setSyncingId(id)
+    try {
+      const res = await fetch(`/api/projects/${id}/github`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to sync to GitHub')
+      
+      setProjects((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, githubUrl: data.url } : p))
+      )
+      alert(`Successfully synced! Repository: ${data.url}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to sync to GitHub')
+    } finally {
+      setSyncingId(null)
     }
   }
 
@@ -157,6 +181,25 @@ export default function ProjectsPage() {
                   </div>
 
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => {
+                        if (project.githubUrl) {
+                          e.stopPropagation()
+                          window.open(project.githubUrl, '_blank', 'noopener,noreferrer')
+                        } else {
+                          handleSync(e, project.id)
+                        }
+                      }}
+                      disabled={syncingId === project.id}
+                      className={`rounded-md p-1.5 transition-colors disabled:opacity-50 ${
+                        project.githubUrl
+                          ? 'text-neutral-900 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                          : 'text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                      }`}
+                      title={project.githubUrl ? 'View on GitHub' : 'Sync to GitHub'}
+                    >
+                      <Github className={`h-3.5 w-3.5 ${syncingId === project.id ? 'animate-pulse' : ''}`} />
+                    </button>
                     {project.previewUrl && (
                       <button
                         onClick={(e) => {

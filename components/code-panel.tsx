@@ -1,6 +1,6 @@
 'use client'
 
-import { createElement, useState, useCallback, useMemo, useEffect } from 'react'
+import { createElement, useState, useCallback, useMemo } from 'react'
 import { FileCode2, FileText, File, ChevronRight, ChevronDown, Pencil, Save, GitCompare } from 'lucide-react'
 import { cn } from '@/lib/utils'
 

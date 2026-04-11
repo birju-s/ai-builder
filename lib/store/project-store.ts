@@ -63,6 +63,23 @@ export async function createProject(opts: {
   return project
 }
 
+export async function updateProject(id: string, updates: Partial<Project>): Promise<Project | null> {
+  const project = await readProject(id)
+  if (!project) return null
+
+  const updated: ProjectWithVersions = {
+    ...project,
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  }
+
+  await writeProject(updated)
+  log.info('Project updated', { id, name: updated.name })
+
+  const { ...rest } = updated
+  return rest
+}
+
 export async function addVersion(
   projectId: string,
   opts: {

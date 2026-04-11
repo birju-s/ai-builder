@@ -132,7 +132,7 @@
 | 4-1 | Full-stack app generation (Express backend + PostgreSQL) | ✅ | FR-1.9 |
 | 4-2 | Database schema generation (Prisma) | ✅ | |
 | 4-3 | API route generation | ✅ | |
-| 4-4 | GitHub sync (per-version commit messages) | ⬜ | FR-6.6 |
+| 4-4 | GitHub sync (per-version commit messages) | ✅ | FR-6.6 |
 | 4-5 | Fast Preview via SQLite (Dev Phase) | ✅ | Use local SQLite (`dev.db`) inside E2B Sandbox due to 4GB RAM limit preventing Dockerized PostgreSQL |
 | 4-6 | Prod Deploy to Kubernetes via OpenEverest | ⬜ | Migrate SQLite to a K8s cluster. Use OpenEverest Operator for enterprise-grade PostgreSQL provisioning and Day-2 ops |
 | 4-7 | Custom domain support | ⬜ | |

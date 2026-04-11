@@ -156,15 +156,26 @@
 
 ---
 
-## Immediate Next Steps (ordered by impact)
+## Critical Path to V1 Launch (One Unified Path)
 
-1. **✅ 1b-13** — Rebuild E2B template → unlocks full S9 speedup (10-15s saved)
-2. **✅ S8** — Progressive UI feedback → biggest perceived performance improvement
-3. **✅ S4** — Provider interleaving → doubles throughput, reduces rate-limit risk
-4. **✅ S5** — Anthropic prompt caching → 73% cost reduction on Developer Agent
-5. **⬜ 2b-3** — Telemetry feedback loop → needed to actually measure the reliability target
-6. **⬜ S7** — Two-phase generation → perceived TTFP drops to ~12s
-7. **⬜ 2b-4** — Design system rules → improves generated quality consistency
-8. **⬜ 2c-4** — Hot-patch iteration → faster edit loop
-9. **⬜ S10** — Speculative pre-gen → free 1-2s saving
-10. **⬜ 2b-1** — Circuit breaker → production resilience
+To avoid scattered priorities, this is our strict, linear sequence of execution for finishing V1.
+
+### Step 1: Speed, Reliability, & Quality Core
+1. **⬜ S7 — Two-phase generation** (Haiku skeleton → Sonnet enrichment for <15s TTFP)
+2. **⬜ 2c-4 — Hot-patch iteration** (Patch single files in the sandbox via HMR for rapid iteration)
+3. **⬜ 2b-3 — Telemetry feedback loop** (Measure reliability fixes in real-time)
+4. **⬜ 2b-4 — Design system rules** (Standardized aesthetic rules for Architect/Designer)
+
+### Step 2: "Plan Mode" User Experience
+1. **⬜ 3-1 & 3-2 — Plan Mode UI & Editor** (Let users review and edit the structured JSON blueprint before coding begins)
+2. **⬜ 3-3 & 3-4 — Strict Execution** (Pipeline only executes against the approved blueprint, saving state to `plan.md`)
+3. **⬜ 3-5 — Project Dashboard** (List, thumbnails, project states)
+
+### Step 3: Hardening & V1 Finalization
+1. **⬜ 2b-1 — Circuit breaker** (3 consecutive failures → lock out provider)
+2. **⬜ 3-12 — Strict input validation** (Zod schemas on all API routes)
+3. **⬜ 3-13 — Error Boundaries** (Human-readable pipeline failures in UI)
+
+### Step 4: Beyond V1 (Phase 4)
+- **⬜ Full-Stack App Generation** (Express backend + DB generation)
+- **⬜ Custom Deployment Pipeline**

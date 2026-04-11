@@ -1,8 +1,10 @@
 'use client'
 
-import { createElement, useState, useRef, useCallback, useEffect, useMemo } from 'react'
+import { createElement, useState, useCallback, useMemo } from 'react'
 import { FileCode2, FileText, File, ChevronRight, ChevronDown, Pencil, Save } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+import Editor from '@monaco-editor/react'
 
 interface CodePanelProps {
   files: Array<{ path: string; content: string }>
@@ -20,6 +22,18 @@ function getFileIcon(path: string) {
   if (/\.(tsx?|jsx?)$/.test(path)) return FileCode2
   if (/\.(css|json|md)$/.test(path)) return FileText
   return File
+}
+
+import type { OnMount } from '@monaco-editor/react'
+
+function getLanguage(path: string): string {
+  if (path.endsWith('.tsx') || path.endsWith('.ts')) return 'typescript'
+  if (path.endsWith('.jsx') || path.endsWith('.js')) return 'javascript'
+  if (path.endsWith('.css')) return 'css'
+  if (path.endsWith('.json')) return 'json'
+  if (path.endsWith('.md')) return 'markdown'
+  if (path.endsWith('.html')) return 'html'
+  return 'plaintext'
 }
 
 function formatBytes(bytes: number): string {
@@ -146,7 +160,6 @@ export function CodePanel({ files, onFileEdit }: CodePanelProps) {
   })
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState('')
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const tree = useMemo(() => buildFileTree(files), [files])
 
@@ -190,37 +203,11 @@ export function CodePanel({ files, onFileEdit }: CodePanelProps) {
     setIsEditing(false)
   }, [selectedFile, editContent, onFileEdit])
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === 's' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault()
-        handleSave()
-      }
-      // Allow Tab to insert a tab character
-      if (e.key === 'Tab') {
-        e.preventDefault()
-        const textarea = e.currentTarget
-        const start = textarea.selectionStart
-        const end = textarea.selectionEnd
-        const value = textarea.value
-        const newValue = value.substring(0, start) + '  ' + value.substring(end)
-        setEditContent(newValue)
-        // Restore cursor position after state update
-        requestAnimationFrame(() => {
-          textarea.selectionStart = start + 2
-          textarea.selectionEnd = start + 2
-        })
-      }
-    },
-    [handleSave]
-  )
-
-  // Focus textarea when entering edit mode
-  useEffect(() => {
-    if (isEditing && textareaRef.current) {
-      textareaRef.current.focus()
-    }
-  }, [isEditing])
+  const handleEditorMount: OnMount = useCallback((editor, monaco) => {
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+      handleSave()
+    })
+  }, [handleSave])
 
   return (
     <div className="flex h-full w-full bg-neutral-950 text-neutral-100">
@@ -291,25 +278,33 @@ export function CodePanel({ files, onFileEdit }: CodePanelProps) {
         </div>
 
         {/* Code display / editor */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-hidden relative">
           {selectedFile ? (
-            isEditing ? (
-              <textarea
-                ref={textareaRef}
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onBlur={handleSave}
-                className="w-full h-full bg-neutral-950 text-neutral-100 font-mono text-xs leading-relaxed p-4 resize-none outline-none border-none"
-                spellCheck={false}
-              />
-            ) : (
-              <pre className="p-4 overflow-x-auto">
-                <code className="font-mono text-xs leading-relaxed text-neutral-200 whitespace-pre">
-                  {selectedFile.content}
-                </code>
-              </pre>
-            )
+            <Editor
+              height="100%"
+              language={getLanguage(selectedFile.path)}
+              theme="vs-dark"
+              value={isEditing ? editContent : selectedFile.content}
+              onChange={(value) => {
+                if (isEditing && value !== undefined) {
+                  setEditContent(value)
+                }
+              }}
+              onMount={handleEditorMount}
+              options={{
+                readOnly: !isEditing,
+                minimap: { enabled: false },
+                fontSize: 13,
+                wordWrap: 'on',
+                lineNumbers: 'on',
+                scrollBeyondLastLine: false,
+                fontFamily: 'var(--font-geist-mono), monospace',
+                padding: { top: 16, bottom: 16 },
+                tabSize: 2,
+                folding: false,
+              }}
+              loading={<div className="flex items-center justify-center h-full text-neutral-600 text-sm">Loading editor...</div>}
+            />
           ) : (
             <div className="flex items-center justify-center h-full text-neutral-600 text-sm">
               Select a file to view its contents

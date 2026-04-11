@@ -114,7 +114,7 @@
 | 3-5 | Project dashboard (list, thumbnails, status) | ✅ | FR-6.4 |
 | 3-6 | Project duplication | ⬜ | FR-6.5 |
 | 3-7 | Diff view between two versions | ⬜ | FR-6.3 |
-| 3-8 | In-browser code editor (Monaco, lazy-loaded) | ⬜ | FR-5.4 |
+| 3-8 | In-browser code editor (Monaco, lazy-loaded) | ✅ | FR-5.4 |
 | 3-9 | Visual edit mode (click preview element → source component) | ⬜ | FR-5.5 |
 | 3-10 | Architect two-pass: Haiku ambiguity score → escalate to Sonnet | ⬜ | saves ~80% Architect cost |
 | 3-11 | Rate limiting (10 gen/hr free, 50/hr pro) | ⬜ | FR arch comment |

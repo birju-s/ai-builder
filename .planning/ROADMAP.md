@@ -133,10 +133,11 @@
 | 4-2 | Database schema generation (Prisma) | ⬜ | |
 | 4-3 | API route generation | ⬜ | |
 | 4-4 | GitHub sync (per-version commit messages) | ⬜ | FR-6.6 |
-| 4-5 | Custom deployment pipeline (NO Vercel/Railway) | ⬜ | FR-6.7 |
-| 4-6 | Custom domain support | ⬜ | |
-| 4-7 | Network egress rules on sandbox template | ⬜ | NFR-4 arch comment |
-| 4-8 | Auth (Clerk or equivalent) | 🚫 | FR-8 — deferred until base product is satisfactory |
+| 4-5 | Fast Preview via Docker Compose (Dev Phase) | ⬜ | Use lightweight Docker Compose (Next.js + Express + Postgres:16) inside E2B Sandbox for <20s TTFP |
+| 4-6 | Prod Deploy to Kubernetes via OpenEverest | ⬜ | Migrate the Docker setup to a K8s cluster. Use OpenEverest Operator for enterprise-grade PostgreSQL provisioning and Day-2 ops |
+| 4-7 | Custom domain support | ⬜ | |
+| 4-8 | Network egress rules on sandbox template | ⬜ | NFR-4 arch comment |
+| 4-9 | Auth (Clerk or equivalent) | 🚫 | FR-8 — deferred until base product is satisfactory |
 
 ---
 

@@ -10,7 +10,7 @@ export class GeminiProvider implements LLMProvider {
   private genAI: GoogleGenerativeAI
   private model: string
 
-  constructor(model = 'gemini-1.5-flash') {
+  constructor(model = 'gemini-2.5-flash') {
     const apiKey = process.env.GOOGLE_AI_API_KEY
     if (!apiKey) {
       throw new Error(

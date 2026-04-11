@@ -107,19 +107,9 @@ function generateTsConfig(): string {
 
 function generateNextConfig(): string {
   return [
-    'import path from "node:path";',
-    'import { fileURLToPath } from "node:url";',
     'import type { NextConfig } from "next";',
     '',
-    'const rootDir = path.dirname(fileURLToPath(import.meta.url));',
-    '',
     'const nextConfig: NextConfig = {',
-    '  turbopack: {',
-    '    root: rootDir,',
-    '    resolveAlias: {',
-    '      tailwindcss: path.join(rootDir, "node_modules", "tailwindcss"),',
-    '    },',
-    '  },',
     '};',
     '',
     'export default nextConfig;',
@@ -129,7 +119,7 @@ function generateNextConfig(): string {
 
 function generateGlobalsCss(colors: DesignSystem['colors'], borderRadius: string): string {
   return [
-    '@import "../node_modules/tailwindcss/index.css";',
+    '@import "tailwindcss";',
     '',
     '@theme inline {',
     '  --color-background: var(--background);',

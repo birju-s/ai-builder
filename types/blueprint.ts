@@ -3,6 +3,20 @@ export interface Blueprint {
   appType: 'website' | 'fullstack'
   name: string
   description: string
+  models?: Array<{
+    name: string
+    fields: Array<{
+      name: string
+      type: string
+      isUnique?: boolean
+      isOptional?: boolean
+    }>
+  }>
+  apiRoutes?: Array<{
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE'
+    path: string
+    description: string
+  }>
   pages: PageSpec[]
   designSystem: DesignSystem
 }

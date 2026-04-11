@@ -38,8 +38,31 @@ function safeFontName(fontName: string, fallback: string): string {
   return SAFE_FONTS[fontName] ? fontName : fallback
 }
 
-function generatePackageJson(): string {
-  return JSON.stringify(generatedSitePackage, null, 2) + '\n'
+function generatePackageJson(appType: 'website' | 'fullstack'): string {
+  const pkg: Record<string, unknown> = { ...generatedSitePackage }
+  if (appType === 'fullstack') {
+    pkg.dependencies = {
+      ...(pkg.dependencies as Record<string, string>),
+      express: '^4.19.2',
+      cors: '^2.8.5',
+      '@prisma/client': '^5.13.0',
+      'dotenv': '^16.4.5',
+    }
+    pkg.devDependencies = {
+      ...(pkg.devDependencies as Record<string, string>),
+      prisma: '^5.13.0',
+      '@types/express': '^4.17.21',
+      '@types/cors': '^2.8.17',
+      'tsx': '^4.7.2',
+    }
+    pkg.scripts = {
+      ...(pkg.scripts as Record<string, string>),
+      'dev': 'tsx watch server.ts',
+      'build': 'prisma generate && next build',
+      'start': 'tsx server.ts',
+    }
+  }
+  return JSON.stringify(pkg, null, 2) + '\n'
 }
 
 function generatePostcssConfig(): string {
@@ -246,7 +269,8 @@ function generateUtils(): string {
 }
 
 export function generateDeterministicFiles(
-  design: DesignSystem
+  design: DesignSystem,
+  appType: 'website' | 'fullstack' = 'website'
 ): Array<{ path: string; content: string }> {
   const { colors, typography, borderRadius } = design
 
@@ -260,8 +284,8 @@ export function generateDeterministicFiles(
 
   const uniqueFonts = [...new Set([displayFontImport, bodyFontImport, monoFontImport])]
 
-  return [
-    { path: 'package.json', content: generatePackageJson() },
+  const files = [
+    { path: 'package.json', content: generatePackageJson(appType) },
     { path: 'postcss.config.mjs', content: generatePostcssConfig() },
     { path: 'tsconfig.json', content: generateTsConfig() },
     { path: 'next.config.ts', content: generateNextConfig() },
@@ -272,4 +296,75 @@ export function generateDeterministicFiles(
     },
     { path: 'lib/utils.ts', content: generateUtils() },
   ]
+
+  if (appType === 'fullstack') {
+    files.push({
+      path: 'server.ts',
+      content: generateServerTs(),
+    })
+    files.push({
+      path: 'docker-compose.yml',
+      content: generateDockerCompose(),
+    })
+    files.push({
+      path: 'prisma/client.ts',
+      content: `import { PrismaClient } from '@prisma/client'\n\nconst prisma = new PrismaClient()\nexport default prisma\n`,
+    })
+  }
+
+  return files
+}
+
+function generateServerTs(): string {
+  return [
+    'import express from "express"',
+    'import next from "next"',
+    'import cors from "cors"',
+    'import apiRoutes from "./server/routes"',
+    '',
+    'const dev = process.env.NODE_ENV !== "production"',
+    'const hostname = "0.0.0.0"',
+    'const port = parseInt(process.env.PORT || "3000", 10)',
+    '',
+    'const app = next({ dev, hostname, port })',
+    'const handle = app.getRequestHandler()',
+    '',
+    'app.prepare().then(() => {',
+    '  const server = express()',
+    '  server.use(cors())',
+    '  server.use(express.json())',
+    '',
+    '  // API routes',
+    '  server.use("/api", apiRoutes)',
+    '',
+    '  // Next.js fallback',
+    '  server.all("*", (req, res) => {',
+    '    return handle(req, res)',
+    '  })',
+    '',
+    '  server.listen(port, (err?: unknown) => {',
+    '    if (err) throw err',
+    '    console.log(`> Ready on http://localhost:${port}`)',
+    '  })',
+    '})',
+  ].join('\n')
+}
+
+function generateDockerCompose(): string {
+  return [
+    'version: "3.8"',
+    'services:',
+    '  postgres:',
+    '    image: postgres:15-alpine',
+    '    environment:',
+    '      POSTGRES_USER: admin',
+    '      POSTGRES_PASSWORD: password',
+    '      POSTGRES_DB: siteforge',
+    '    ports:',
+    '      - "5432:5432"',
+    '    volumes:',
+    '      - postgres_data:/var/lib/postgresql/data',
+    'volumes:',
+    '  postgres_data:',
+  ].join('\n')
 }

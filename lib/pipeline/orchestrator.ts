@@ -3,6 +3,8 @@ import { generateBlueprint, formatPlanMd } from '@/lib/templates/blueprint'
 import { generateDeterministicFiles } from '@/lib/templates/deterministic'
 import generatedSitePackage from '@/lib/templates/generated-site-package.json'
 import { generateSkeletonFiles, runDeveloperEnrichment } from '@/lib/agents/developer'
+import { generatePrismaSchema } from '@/lib/agents/database'
+import { generateExpressRoutes } from '@/lib/agents/backend'
 import { fixBuildErrors } from '@/lib/agents/fixer'
 import { validateFiles } from '@/lib/pipeline/validator'
 import { runImagePipeline } from '@/lib/services/image-pipeline'
@@ -176,7 +178,7 @@ export async function runPipeline(prompt: string, emit: EmitFn, preApprovedBluep
     state.stage = 'generating'
     emitStage(emit, 'generating', 'Generating React components...')
 
-    const deterministicFiles = generateDeterministicFiles(state.blueprint.designSystem)
+    const deterministicFiles = generateDeterministicFiles(state.blueprint.designSystem, state.blueprint.appType)
     const usingPrebuiltTemplate = usesPrebuiltTemplate()
     for (const f of deterministicFiles) {
       state.files.push({
@@ -271,9 +273,39 @@ export async function runPipeline(prompt: string, emit: EmitFn, preApprovedBluep
       })
       await new Promise((r) => setTimeout(r, 2000))
     } else {
-      const result = await generateSkeletonFiles(state.blueprint)
+      const [result, fullstackResult] = await Promise.all([
+        generateSkeletonFiles(state.blueprint),
+        (async () => {
+          if (state.blueprint?.appType === 'fullstack') {
+            log.info('Generating fullstack backend files...')
+            const prismaSchema = await generatePrismaSchema(state.blueprint)
+            const routes = await generateExpressRoutes(state.blueprint, prismaSchema)
+            return {
+              prismaSchema,
+              routes
+            }
+          }
+          return null
+        })()
+      ])
+
       aiFiles = result.files
       manifest = result.manifest
+
+      if (fullstackResult) {
+        aiFiles.push({
+          path: 'prisma/schema.prisma',
+          content: fullstackResult.prismaSchema,
+          sizeBytes: new TextEncoder().encode(fullstackResult.prismaSchema).length,
+          generationTimeMs: 0
+        })
+        aiFiles.push({
+          path: 'server/routes.ts',
+          content: fullstackResult.routes,
+          sizeBytes: new TextEncoder().encode(fullstackResult.routes).length,
+          generationTimeMs: 0
+        })
+      }
       
       aiFiles.forEach((file, index) => {
         state.files.push(file)

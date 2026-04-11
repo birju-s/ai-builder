@@ -15,6 +15,12 @@ OUTPUT FORMAT (strict JSON, no markdown):
   "name": "Business Name",
   "description": "One-line description matching the user's request",
   "appType": "website",
+  "models": [
+    { "name": "User", "fields": [{ "name": "email", "type": "String", "isUnique": true }] }
+  ],
+  "apiRoutes": [
+    { "method": "GET", "path": "/api/users", "description": "Fetch all users" }
+  ],
   "pages": [
     {
       "route": "/",
@@ -31,6 +37,9 @@ OUTPUT FORMAT (strict JSON, no markdown):
 
 RULES:
 - Evaluate the user's prompt and assign an "ambiguity_score" from 1-10. 1 means extremely detailed and specific, 10 means very vague (e.g. "make me a site").
+- Set "appType" to "fullstack" if the user asks for dynamic database features (e.g., login, dashboard, e-commerce, blog with CMS, user profiles, save data). Otherwise, set it to "website".
+- If "appType" is "fullstack", you MUST include a "models" array defining the database schema, and an "apiRoutes" array defining the backend endpoints.
+- If "appType" is "website", "models" and "apiRoutes" should be empty arrays or omitted.
 - READ THE USER'S PROMPT CAREFULLY. The name, description, headlines, and subtext must ALL reflect the specific business/person/topic they described.
 - Every website MUST have navbar, hero, and footer sections.
 - Choose 3-5 additional sections that make sense for THIS specific business.
@@ -49,6 +58,20 @@ export interface ArchitectOutput {
   name: string
   description: string
   appType: 'website' | 'fullstack'
+  models?: Array<{
+    name: string
+    fields: Array<{
+      name: string
+      type: string
+      isUnique?: boolean
+      isOptional?: boolean
+    }>
+  }>
+  apiRoutes?: Array<{
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE'
+    path: string
+    description: string
+  }>
   pages: Array<{
     route: string
     name: string

@@ -339,6 +339,8 @@ export async function generateBlueprint(prompt: string): Promise<Blueprint> {
       appType: structure.appType || 'website',
       name: structure.name,
       description: structure.description,
+      models: structure.models,
+      apiRoutes: structure.apiRoutes,
       pages: structure.pages.map(p => ({
         route: p.route,
         name: p.name,

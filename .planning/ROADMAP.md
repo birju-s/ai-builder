@@ -96,7 +96,7 @@
 | 2c-1 | Chat-based iteration (modify specific components) | ✅ | /api/iterate, iterator agent |
 | 2c-2 | Validator checks on iterated files before sandbox patch | ✅ | |
 | 2c-3 | Auto-reload preview after iteration change | ✅ | |
-| 2c-4 | Hot-patching individual files without full rebuild | ⬜ | FR-2.6 — write single file to sandbox, let HMR handle it |
+| 2c-4 | Hot-patching individual files without full rebuild | ✅ | FR-2.6 — write single file to sandbox, let HMR handle it |
 | 2c-5 | Sandbox auto-destroy after 15 min inactivity + snapshot | ⬜ | FR-2.7, FR-2.8 — currently 1h timeout |
 
 ---
@@ -162,7 +162,7 @@ To avoid scattered priorities, this is our strict, linear sequence of execution 
 
 ### Step 1: Speed, Reliability, & Quality Core
 1. **✅ S7 — Two-phase generation** (Haiku skeleton → Sonnet enrichment for <15s TTFP)
-2. **⬜ 2c-4 — Hot-patch iteration** (Patch single files in the sandbox via HMR for rapid iteration)
+2. **✅ 2c-4 — Hot-patch iteration** (Patch single files in the sandbox via HMR for rapid iteration)
 3. **⬜ 2b-3 — Telemetry feedback loop** (Measure reliability fixes in real-time)
 4. **⬜ 2b-4 — Design system rules** (Standardized aesthetic rules for Architect/Designer)
 

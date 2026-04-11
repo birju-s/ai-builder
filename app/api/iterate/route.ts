@@ -1,6 +1,6 @@
 import { runIterator } from '@/lib/agents/iterator'
 import { addVersion } from '@/lib/store/project-store'
-import { Sandbox } from 'e2b'
+import { createSandboxService } from '@/lib/sandbox/service'
 
 export const maxDuration = 300
 export const dynamic = 'force-dynamic'
@@ -43,15 +43,12 @@ export async function POST(req: Request) {
         emit('iterate-files', { files: result.files.map((f) => f.path) })
 
         // Connect to existing sandbox
-        const sandbox = await Sandbox.connect(sandboxId, {
-          apiKey: process.env.E2B_API_KEY!,
-        })
+        const sandboxService = createSandboxService()
+        const sandbox = await sandboxService.connect(sandboxId)
 
         // Hot-patch: just write files, dev server HMR handles the rest
         emit('iterate-patching', { count: result.files.length })
-        for (const f of result.files) {
-          await sandbox.files.write(f.path, f.content)
-        }
+        await sandbox.writeFiles(result.files.map(f => ({ path: f.path, content: f.content })))
 
         // Give HMR a moment to recompile
         await new Promise((r) => setTimeout(r, 3000))

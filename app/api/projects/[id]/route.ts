@@ -1,21 +1,19 @@
-import { getProject, deleteProject } from '@/lib/store/project-store'
+import { getProject } from '@/lib/store/project-store'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const project = await getProject(id)
-  if (!project) {
-    return Response.json({ error: 'Project not found' }, { status: 404 })
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params
+    const project = await getProject(id)
+    if (!project) {
+      return Response.json({ error: 'Project not found' }, { status: 404 })
+    }
+    return Response.json({ project })
+  } catch (error) {
+    return Response.json(
+      { error: error instanceof Error ? error.message : 'Failed to fetch project' },
+      { status: 500 }
+    )
   }
-  return Response.json({ project })
-}
-
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const deleted = await deleteProject(id)
-  if (!deleted) {
-    return Response.json({ error: 'Project not found' }, { status: 404 })
-  }
-  return Response.json({ success: true })
 }

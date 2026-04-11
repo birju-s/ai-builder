@@ -7,8 +7,10 @@ import { PreviewFrame } from '@/components/preview-frame'
 import { ChatPanel } from '@/components/chat-panel'
 import { BlueprintEditor } from '@/components/blueprint-editor'
 import { CodePanel } from '@/components/code-panel'
+import { ProjectDashboard } from '@/components/project-dashboard'
 import type { SSEEvent, PipelineStage, PipelineMetrics } from '@/types/pipeline'
 import type { Blueprint } from '@/types/blueprint'
+import type { ProjectVersion } from '@/lib/store/types'
 
 interface PipelineFile {
   path: string
@@ -295,7 +297,32 @@ export default function Home() {
         )}
 
         <div className="flex-1 flex items-center justify-center">
-          {rightTab === 'preview' ? (
+          {appMode === 'idle' ? (
+            <ProjectDashboard
+              onSelectProject={async (p) => {
+                try {
+                  const res = await fetch(`/api/projects/${p.id}`)
+                  const data = await res.json()
+                  if (data.project) {
+                    const v = data.project.versions.find((ver: ProjectVersion) => ver.version === data.project.currentVersion) || data.project.versions[0]
+                    if (v) {
+                      setFiles(v.files || [])
+                      try {
+                        setBlueprint(JSON.parse(v.blueprintJson))
+                      } catch {}
+                    }
+                  }
+                  setSandboxId(p.sandboxId)
+                  setPreviewUrl(p.previewUrl)
+                  setAppMode('preview')
+                  setStage('preview-ready')
+                  setRightTab('preview')
+                } catch (e) {
+                  console.error('Failed to load project', e)
+                }
+              }}
+            />
+          ) : rightTab === 'preview' ? (
             <PreviewFrame url={previewUrl} stage={stage} />
           ) : (
             <CodePanel

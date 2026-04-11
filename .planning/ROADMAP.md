@@ -111,7 +111,7 @@
 | 3-2 | Blueprint editor UI (editable structured form) | ✅ | FR-4.2, FR-4.3 — `blueprint-editor.tsx` exists as skeleton |
 | 3-3 | Pipeline executes strictly against approved blueprint | ✅ | FR-4.4 |
 | 3-4 | Persist approved plan as `plan.md` in project store | ✅ | FR-4.5 |
-| 3-5 | Project dashboard (list, thumbnails, status) | ⬜ | FR-6.4 |
+| 3-5 | Project dashboard (list, thumbnails, status) | ✅ | FR-6.4 |
 | 3-6 | Project duplication | ⬜ | FR-6.5 |
 | 3-7 | Diff view between two versions | ⬜ | FR-6.3 |
 | 3-8 | In-browser code editor (Monaco, lazy-loaded) | ⬜ | FR-5.4 |
@@ -169,7 +169,7 @@ To avoid scattered priorities, this is our strict, linear sequence of execution 
 ### Step 2: "Plan Mode" User Experience
 1. **✅ 3-1 & 3-2 — Plan Mode UI & Editor** (Let users review and edit the structured JSON blueprint before coding begins)
 2. **✅ 3-3 & 3-4 — Strict Execution** (Pipeline only executes against the approved blueprint, saving state to `plan.md`)
-3. **⬜ 3-5 — Project Dashboard** (List, thumbnails, project states)
+3. **✅ 3-5 — Project Dashboard** (List, thumbnails, project states)
 
 ### Step 3: Hardening & V1 Finalization
 1. **✅ 2b-1 — Circuit breaker** (3 consecutive failures → lock out provider)

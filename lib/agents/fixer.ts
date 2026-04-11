@@ -1,6 +1,7 @@
 import { createLogger } from '@/lib/logger'
 import { getDefaultProvider } from '@/lib/llm/registry'
 import { applyStreamCorrections } from '@/lib/pipeline/stream-correction'
+import { logTelemetryFix } from '@/lib/telemetry'
 
 const log = createLogger('agent:fixer')
 
@@ -143,13 +144,34 @@ export async function fixBuildErrors(
       if (fixed.includes('import ') || fixed.includes('export ') || fixed.includes('use client')) {
         fixes.push({ path: originalFile.path, content: fixed.trim() })
         timer.end({ success: true })
+        logTelemetryFix({
+          layer: 'C',
+          type: 'build_error',
+          file: originalFile.path,
+          success: true,
+          error: error.errors.slice(0, 200),
+        })
       } else {
         log.warn('Fixer output does not look like code, skipping', { file: error.file })
         timer.end({ success: false })
+        logTelemetryFix({
+          layer: 'C',
+          type: 'build_error_invalid_output',
+          file: originalFile.path,
+          success: false,
+          error: error.errors.slice(0, 200),
+        })
       }
     } catch (e) {
       timer.end({ success: false, error: (e as Error).message })
       log.error('Fixer failed for file', { file: error.file, error: (e as Error).message })
+      logTelemetryFix({
+        layer: 'C',
+        type: 'build_error_exception',
+        file: originalFile.path,
+        success: false,
+        error: (e as Error).message,
+      })
     }
   }
 

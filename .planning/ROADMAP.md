@@ -83,7 +83,7 @@
 |---|------|--------|-------|
 | 2b-1 | Circuit breaker (3 consecutive failures → route to fallback for 5 min) | ⬜ | FR-7.3 |
 | 2b-2 | Per-agent timeout with provider fallback (Arch=15s, Designer=10s, Dev=20s/file) | ⬜ | FR arch comment |
-| 2b-3 | Telemetry feedback loop (log every fix: layer, type, file, success/failure) | ⬜ | FR-3.8, NFR-6.4 — needed to measure reliability target |
+| 2b-3 | Telemetry feedback loop (log every fix: layer, type, file, success/failure) | ✅ | FR-3.8, NFR-6.4 — logged to `.siteforge/telemetry/pipeline_fixes.jsonl` |
 | 2b-4 | Design system rules (`.siteforge/rules/`) | ⬜ | accessibility rules, brand constraints, anti-template rules |
 | 2b-5 | Pipeline success rate metric endpoint (`/api/metrics`) | ⬜ | NFR-6.3 |
 | 2b-6 | Per-agent token usage logging | ⬜ | NFR-6.1 |

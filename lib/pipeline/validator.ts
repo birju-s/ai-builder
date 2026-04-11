@@ -1,6 +1,7 @@
 import { createLogger } from '@/lib/logger'
 import { applyStreamCorrections, type CorrectionFix } from './stream-correction'
 import { applyAutofixes, type AutofixFix } from './ast-autofixer'
+import { logTelemetryFix } from '@/lib/telemetry'
 
 const log = createLogger('pipeline:validator')
 
@@ -32,6 +33,16 @@ export function validateFile(content: string, filePath: string): ValidationResul
       layerB: astResult.fixes.length,
       missingDeps: astResult.missingDeps.length,
       durationMs,
+    })
+
+    allFixes.forEach((fix) => {
+      logTelemetryFix({
+        layer: fix.layer as 'A' | 'B',
+        type: fix.type,
+        file: filePath,
+        success: true,
+        description: fix.description,
+      })
     })
   }
 

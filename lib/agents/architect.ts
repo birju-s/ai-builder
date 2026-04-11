@@ -91,7 +91,7 @@ export async function runArchitect(prompt: string): Promise<ArchitectOutput> {
   const systemPrompt = ARCHITECT_SYSTEM + getDesignSystemRules()
   
   // Pass 1: Try with Haiku (fast & cheap)
-  const haikuProvider = new AnthropicProvider('claude-3-5-haiku-latest')
+  const haikuProvider = new AnthropicProvider('claude-3-haiku-20240307')
   
   try {
     const haikuResponse = await haikuProvider.generateText({

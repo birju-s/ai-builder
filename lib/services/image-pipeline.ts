@@ -218,13 +218,27 @@ export async function runImagePipeline(blueprint: {
 
   log.info('Image pipeline starting', { count: requests.length })
 
-  // Generate all images in parallel (max 3 concurrent)
-  const CONCURRENCY = 3
+  // Generate all images in parallel (max 5 concurrent)
+  const CONCURRENCY = 5
   const results: (ImageResult | null)[] = []
 
   for (let i = 0; i < requests.length; i += CONCURRENCY) {
     const batch = requests.slice(i, i + CONCURRENCY)
-    const batchResults = await Promise.all(batch.map(generateImage))
+    
+    // Add a 15-second strict timeout to prevent image pipeline from hanging the build forever
+    const batchResults = await Promise.all(
+      batch.map((req) => 
+        Promise.race([
+          generateImage(req),
+          new Promise<null>((resolve) => 
+            setTimeout(() => {
+              log.warn('Image generation timed out', { id: req.id })
+              resolve(null)
+            }, 15000)
+          )
+        ])
+      )
+    )
     results.push(...batchResults)
   }
 
